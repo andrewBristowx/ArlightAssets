@@ -1,0 +1,29 @@
+plugins {
+    id 'java'
+    id 'net.neoforged.gradle.userdev' version '7.1.36'
+}
+
+version = '0.1.0'
+group = 'com.arlight.tetris'
+
+base {
+    archivesName = 'ArlightTetris-0.6.18-SKIN-IMAGE-HOTFIX'
+}
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation "net.neoforged:neoforge:21.1.235"
+}
+
+tasks.named('processResources', ProcessResources).configure {
+    def props = [mod_version: project.version]
+    inputs.properties props
+    filesMatching('META-INF/neoforge.mods.toml') {
+        expand props
+    }
+}
