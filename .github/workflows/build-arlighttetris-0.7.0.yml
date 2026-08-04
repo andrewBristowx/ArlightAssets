@@ -25,7 +25,11 @@ jobs:
 
       - name: Rebuild source
         run: |
-          cat phase1/source.part* | base64 -d > source.zip
+          wc -c phase1/source.part*
+          cat phase1/source.part* > joined.b64
+          wc -c joined.b64
+          sha256sum joined.b64
+          base64 -d joined.b64 > source.zip
           mkdir project
           unzip -q source.zip -d project
           if [ -d phase1/overrides ]; then cp -a phase1/overrides/. project/; fi
