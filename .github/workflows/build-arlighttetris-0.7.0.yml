@@ -25,11 +25,16 @@ jobs:
 
       - name: Rebuild source
         run: |
-          wc -c phase1/source.part*
-          cat phase1/source.part* > joined.b64
+          cat phase1/source.fix00a phase1/source.fix00b \
+              phase1/source.part01 phase1/source.part02 phase1/source.part03 \
+              phase1/source.part04 phase1/source.part05 phase1/source.part06 \
+              phase1/source.part07 > joined.b64
           wc -c joined.b64
           sha256sum joined.b64
+          test "$(wc -c < joined.b64)" -eq 98136
+          test "$(sha256sum joined.b64 | cut -d' ' -f1)" = "a7a020648e66cd44f486597a96988849c02072ebb99f6b1b19d96cbe050873c4"
           base64 -d joined.b64 > source.zip
+          unzip -t source.zip
           mkdir project
           unzip -q source.zip -d project
           if [ -d phase1/overrides ]; then cp -a phase1/overrides/. project/; fi
