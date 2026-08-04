@@ -34,10 +34,11 @@ jobs:
 
       - name: Download ArlightTetris 0.6.17 source
         run: |
-          curl -L --fail --retry 5 --retry-delay 3 \
-            "https://drive.google.com/uc?export=download&id=1Pn1jADcQ1fq6cZbuKkcUgVi5NCESDIYM" \
-            -o arlighttetris-source.zip
+          python -m pip install --quiet gdown
+          gdown "https://drive.google.com/uc?id=1Pn1jADcQ1fq6cZbuKkcUgVi5NCESDIYM" \
+            -O arlighttetris-source.zip
           test -s arlighttetris-source.zip
+          file arlighttetris-source.zip
           unzip -t arlighttetris-source.zip
 
       - name: Prepare 0.6.18 source
