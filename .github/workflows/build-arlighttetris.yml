@@ -7,6 +7,12 @@ on:
     paths:
       - ".github/workflows/build-arlighttetris.yml"
       - "arlighttetris-0.6.18.patch"
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/build-arlighttetris.yml"
+      - "arlighttetris-0.6.18.patch"
+      - "build-trigger.txt"
 
 permissions:
   contents: read
