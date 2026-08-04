@@ -1,0 +1,92 @@
+name: Build ArlightTetris 0.8.2
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle 8.14
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.14'
+
+      - name: Rebuild source
+        run: |
+          cat phase1/source.fix00a phase1/source.fix00b \
+              phase1/source.part01 phase1/source.part02 phase1/source.part03 \
+              phase1/source.part04 phase1/source.part05 phase1/source.part06 \
+              phase1/source.part07 > joined.b64
+          test "$(wc -c < joined.b64)" -eq 98136
+          base64 -d joined.b64 > source.zip
+          unzip -t source.zip
+          mkdir project
+          unzip -q source.zip -d project
+          if [ -d phase1/overrides ]; then cp -a phase1/overrides/. project/; fi
+
+          test "$(sha256sum phase2/overrides.part00 | cut -d' ' -f1)" = "c712a5f3edf1dcffcb56d34e65a580b9c2cef0eebb7509430e9c16a43d56c9b2"
+          test "$(sha256sum phase2/overrides.part01 | cut -d' ' -f1)" = "bf55ad101eb4a1da4db2e103f95b3438a5b1b6991cfe842f23347f8fd58e11ca"
+          test "$(sha256sum phase2/overrides.part02 | cut -d' ' -f1)" = "2cb7eace7ba7498a41c2837dfe28cc4df63a358e005aa09b3e7fa9a3ea2fd2d9"
+          test "$(sha256sum phase2/overrides.fix03a | cut -d' ' -f1)" = "4db6e5cd6e10124008d7498ab8fc5bd8b34ee5b5cd39b48b4d1f225dd3fb2fff"
+          test "$(sha256sum phase2/overrides.fix03b | cut -d' ' -f1)" = "b725b2a720e2c8c041634b9585912120aaa1166e980bed11e8e6f63fb3090339"
+          cat phase2/overrides.part00 phase2/overrides.part01 phase2/overrides.part02 \
+              phase2/overrides.fix03a phase2/overrides.fix03b | base64 -d > phase2-overrides.tar.gz
+          test "$(sha256sum phase2-overrides.tar.gz | cut -d' ' -f1)" = "48fa27e2fa40050a74949d7c36b03a202f972536d7469ddbee88f45a8daa3c42"
+          tar -xzf phase2-overrides.tar.gz -C project
+
+          patch -d project -p1 < phase3/arlighttetris-0.8.2.patch
+          cp phase3/RankPanelRenderer.java project/src/main/java/com/arlight/tetris/portraitfix/
+          cp phase3/XaeroMinimapIntegration.java project/src/main/java/com/arlight/tetris/integration/
+          cp phase3/XaeroMinimapSuppressor.java project/src/main/java/com/arlight/tetris/client/
+
+          test "$(sha256sum phase3/panel.part00 | cut -d' ' -f1)" = "650b71eb25fb53834ae0c1dbb82df34e1dbd8bc413ff575232b3a443bc2072d7"
+          test "$(sha256sum phase3/panel.part01 | cut -d' ' -f1)" = "6363b8b07a38be64f9a59b050cc9fc60a03d9fa6706ab55a6414e4c658d9ae6a"
+          test "$(sha256sum phase3/panel.part02 | cut -d' ' -f1)" = "87913033c4d5c5430681bf7b8b2ab7214f7772012bf2cb070464c6e9f1188793"
+          test "$(sha256sum phase3/panel.part03 | cut -d' ' -f1)" = "f8a6b5ad38165b3e62e3371f97059c9845a02694137796ca3ea3f1262ee8a1bb"
+          test "$(sha256sum phase3/panel.part04 | cut -d' ' -f1)" = "08f84389000dd1735451df7007c09dc07e637a05ca4fce471f5d2fe4e19d9c26"
+          test "$(sha256sum phase3/panel.part05 | cut -d' ' -f1)" = "d555e704616b4f3b89de5c8ae4133c84cc151ca0f4b3cad63d7a65d178100ec1"
+          test "$(sha256sum phase3/panel.part06 | cut -d' ' -f1)" = "c793f74b1aa8bef14ee13cca2ef527e1a327b28f0f3d1592539e58d634288862"
+          test "$(sha256sum phase3/panel.part07 | cut -d' ' -f1)" = "e007d96891b7f98bb5fedf8fd7fbbeb6433bac94d390114047042a9993af4e87"
+          cat phase3/panel.part00 phase3/panel.part01 phase3/panel.part02 phase3/panel.part03 \
+              phase3/panel.part04 phase3/panel.part05 phase3/panel.part06 phase3/panel.part07 \
+              | base64 -d > panel-pngs.tar.gz
+          test "$(sha256sum panel-pngs.tar.gz | cut -d' ' -f1)" = "fef43f93b47d872bf7d359849000537b65795f20b64cb7e251902885a24b30ed"
+          tar -xzf panel-pngs.tar.gz -C project/src/main/resources
+
+          sed -i "s/version = '0.8.0'/version = '0.8.2'/" project/build.gradle
+          sed -i 's/RenderLivingEvent.Pre<?, ?, ?>/RenderLivingEvent.Pre<?, ?>/' project/src/main/java/com/arlight/tetris/portraitfix/SkinImageRenderer.java
+          sed -i '/stand.setMarker(true);/d; /stand.setSmall(false);/d' project/src/main/java/com/arlight/tetris/world/ArenaDisplayManager.java
+          grep -q "version = '0.8.2'" project/build.gradle
+
+      - name: Compile
+        working-directory: project
+        run: gradle --no-daemon clean build
+
+      - name: Prepare artifact
+        run: |
+          mkdir -p artifact
+          JAR=$(find project/build/libs -maxdepth 1 -type f -name '*.jar' ! -name '*sources*' ! -name '*dev*' | head -n 1)
+          test -n "$JAR"
+          cp "$JAR" artifact/ArlightTetris-0.8.2-UNIFIED-PANELS-XAERO.jar
+          cd project
+          zip -qr ../artifact/ArlightTetris-0.8.2-UNIFIED-PANELS-XAERO-SOURCE.zip .
+
+      - name: Upload compiled files
+        uses: actions/upload-artifact@v4
+        with:
+          name: ArlightTetris-0.8.2-UNIFIED-PANELS-XAERO
+          path: artifact/*
+          if-no-files-found: error
+          retention-days: 30
