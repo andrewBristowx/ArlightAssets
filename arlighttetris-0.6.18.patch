@@ -1,0 +1,81 @@
+--- a/src/main/java/com/arlight/tetris/client/SkinPortraitRenderer.java
++++ b/src/main/java/com/arlight/tetris/client/SkinPortraitRenderer.java
+@@ -111,11 +111,12 @@
+                 if (!failureLogged) {
+                     failureLogged = true;
+                     LOGGER.log(Level.WARNING,
+-                            "No se pudo renderizar el retrato 2D en coordenadas del mundo.",
++                            "No se pudo renderizar el retrato 2D como imagen del panel.",
+                             throwable);
+                 }
+             }
+         }
++        buffers.endBatch();
+     }
+ 
+     private static void renderWorldPortrait(PoseStack pose,
+@@ -132,23 +133,28 @@
+         RenderType renderType = RenderType.entityCutoutNoCull(skin.texture());
+         VertexConsumer vertices = buffers.getBuffer(renderType);
+ 
+-        // La altura completa de la skin son 32 píxeles. Estas escalas caben
+-        // dentro de los marcos rediseñados del primer, segundo y tercer puesto.
+-        float pixel = portrait.large() ? 0.1375F : 0.1085F;
+-        float halfWidth = 8.0F * pixel;
++        // Retrato 2D "como imagen": plano, siempre visible y centrado en el marco.
++        // La posición del ArmorStand representa los pies del retrato.
++        float pixel = portrait.large() ? 0.060F : 0.0475F;
++        float portraitWidth = 16.0F * pixel;
+ 
+         pose.pushPose();
+         try {
+-            // Posición absoluta del ancla convertida a espacio relativo a cámara.
+             pose.translate(
+-                    portrait.x() - cameraPos.x - halfWidth,
++                    portrait.x() - cameraPos.x,
+                     portrait.y() - cameraPos.y,
+-                    portrait.z() - cameraPos.z - 0.025D
++                    portrait.z() - cameraPos.z
+             );
+ 
++            // Mostrarlo como una imagen plana frente al jugador.
++            Camera camera = Minecraft.getInstance().gameRenderer.getMainCamera();
++            pose.mulPose(camera.rotation());
++            // 32 píxeles de alto desde los pies hasta la cabeza.
++            pose.translate(-portraitWidth / 2.0F, 0.0F, 0.02F);
++
+             PoseStack.Pose current = pose.last();
+ 
+-            // Capa base. Coordenadas del retrato medidas desde los pies.
++            // Capa base.
+             drawPart(vertices, current, 4, 24, 8, 8, 8, 8, pixel, 0.0000F);    // cabeza
+             drawPart(vertices, current, 4, 12, 8, 12, 20, 20, pixel, 0.0000F);  // torso
+             drawPart(vertices, current, 0, 12, 4, 12, 44, 20, pixel, 0.0000F);  // brazo derecho
+@@ -156,21 +162,17 @@
+             drawPart(vertices, current, 4, 0, 4, 12, 4, 20, pixel, 0.0000F);    // pierna derecha
+             drawPart(vertices, current, 8, 0, 4, 12, 20, 52, pixel, 0.0000F);   // pierna izquierda
+ 
+-            // Capas externas, ligeramente adelantadas para evitar z-fighting.
+-            float overlayZ = -0.0030F;
++            // Capas externas.
++            float overlayZ = -0.0010F;
+             drawPart(vertices, current, 4, 24, 8, 8, 40, 8, pixel, overlayZ);    // sombrero
+-            drawPart(vertices, current, 4, 12, 8, 12, 20, 36, pixel, overlayZ); // chaqueta
+-            drawPart(vertices, current, 0, 12, 4, 12, 44, 36, pixel, overlayZ); // manga derecha
+-            drawPart(vertices, current, 12, 12, 4, 12, 52, 52, pixel, overlayZ);// manga izquierda
++            drawPart(vertices, current, 4, 12, 8, 12, 20, 36, pixel, overlayZ);  // chaqueta
++            drawPart(vertices, current, 0, 12, 4, 12, 44, 36, pixel, overlayZ);  // manga derecha
++            drawPart(vertices, current, 12, 12, 4, 12, 52, 52, pixel, overlayZ); // manga izquierda
+             drawPart(vertices, current, 4, 0, 4, 12, 4, 36, pixel, overlayZ);    // pantalón derecho
+-            drawPart(vertices, current, 8, 0, 4, 12, 4, 52, pixel, overlayZ);   // pantalón izquierdo
++            drawPart(vertices, current, 8, 0, 4, 12, 4, 52, pixel, overlayZ);    // pantalón izquierdo
+         } finally {
+             pose.popPose();
+         }
+-
+-        // Son como máximo nueve retratos; vaciar por textura evita que el lote
+-        // quede pendiente para otro stage y garantiza que aparezca este frame.
+-        buffers.endBatch(renderType);
+     }
+ 
+     /** Dibuja la cara frontal de una sección de la skin 64x64. */
