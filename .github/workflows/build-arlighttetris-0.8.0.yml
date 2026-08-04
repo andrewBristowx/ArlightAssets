@@ -1,0 +1,71 @@
+name: Build ArlightTetris 0.8.0
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle 8.14
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.14'
+
+      - name: Rebuild source
+        run: |
+          cat phase1/source.fix00a phase1/source.fix00b \
+              phase1/source.part01 phase1/source.part02 phase1/source.part03 \
+              phase1/source.part04 phase1/source.part05 phase1/source.part06 \
+              phase1/source.part07 > joined.b64
+          test "$(wc -c < joined.b64)" -eq 98136
+          base64 -d joined.b64 > source.zip
+          unzip -t source.zip
+          mkdir project
+          unzip -q source.zip -d project
+          if [ -d phase1/overrides ]; then cp -a phase1/overrides/. project/; fi
+
+          test "$(sha256sum phase2/overrides.part00 | cut -d' ' -f1)" = "c712a5f3edf1dcffcb56d34e65a580b9c2cef0eebb7509430e9c16a43d56c9b2"
+          test "$(sha256sum phase2/overrides.part01 | cut -d' ' -f1)" = "bf55ad101eb4a1da4db2e103f95b3438a5b1b6991cfe842f23347f8fd58e11ca"
+          test "$(sha256sum phase2/overrides.part02 | cut -d' ' -f1)" = "2cb7eace7ba7498a41c2837dfe28cc4df63a358e005aa09b3e7fa9a3ea2fd2d9"
+          test "$(sha256sum phase2/overrides.fix03a | cut -d' ' -f1)" = "4db6e5cd6e10124008d7498ab8fc5bd8b34ee5b5cd39b48b4d1f225dd3fb2fff"
+          test "$(sha256sum phase2/overrides.fix03b | cut -d' ' -f1)" = "b725b2a720e2c8c041634b9585912120aaa1166e980bed11e8e6f63fb3090339"
+          cat phase2/overrides.part00 phase2/overrides.part01 phase2/overrides.part02 phase2/overrides.fix03a phase2/overrides.fix03b | base64 -d > phase2-overrides.tar.gz
+          test "$(sha256sum phase2-overrides.tar.gz | cut -d' ' -f1)" = "48fa27e2fa40050a74949d7c36b03a202f972536d7469ddbee88f45a8daa3c42"
+          tar -xzf phase2-overrides.tar.gz -C project
+          sed -i 's/RenderLivingEvent.Pre<?, ?, ?>/RenderLivingEvent.Pre<?, ?>/' project/src/main/java/com/arlight/tetris/portraitfix/SkinImageRenderer.java
+          sed -i '/stand.setMarker(true);/d; /stand.setSmall(false);/d' project/src/main/java/com/arlight/tetris/world/ArenaDisplayManager.java
+          test -f project/build.gradle
+          grep -q "version = '0.8.0'" project/build.gradle
+
+      - name: Compile
+        working-directory: project
+        run: gradle --no-daemon clean build
+
+      - name: Prepare artifact
+        run: |
+          mkdir -p artifact
+          JAR=$(find project/build/libs -maxdepth 1 -type f -name '*.jar' ! -name '*sources*' ! -name '*dev*' | head -n 1)
+          test -n "$JAR"
+          cp "$JAR" artifact/ArlightTetris-0.8.0-GAMEPLAY-PHASE2.jar
+          cd project
+          zip -qr ../artifact/ArlightTetris-0.8.0-GAMEPLAY-PHASE2-SOURCE.zip .
+
+      - name: Upload compiled files
+        uses: actions/upload-artifact@v4
+        with:
+          name: ArlightTetris-0.8.0-GAMEPLAY-PHASE2
+          path: artifact/*
+          if-no-files-found: error
+          retention-days: 30
