@@ -1,4 +1,4 @@
-name: Build ArlightTetris 0.6.18
+name: Build ArlightTetris Skin Image Hotfix
 
 on:
   workflow_dispatch:
@@ -6,12 +6,12 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/build-arlighttetris.yml"
-      - "arlighttetris-0.6.18.patch"
+      - "portraitfix/**"
   pull_request:
     branches: [main]
     paths:
       - ".github/workflows/build-arlighttetris.yml"
-      - "arlighttetris-0.6.18.patch"
+      - "portraitfix/**"
       - "build-trigger.txt"
 
 permissions:
@@ -23,7 +23,7 @@ jobs:
     timeout-minutes: 30
 
     steps:
-      - name: Checkout temporal repository
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up Java 21
@@ -31,42 +31,28 @@ jobs:
         with:
           distribution: temurin
           java-version: "21"
-          cache: gradle
 
-      - name: Download ArlightTetris 0.6.17 source
-        run: |
-          curl -L --fail --retry 5 --retry-delay 3 \
-            "https://drive.google.com/uc?export=download&id=1Pn1jADcQ1fq6cZbuKkcUgVi5NCESDIYM" \
-            -o arlighttetris-source.zip
-          test -s arlighttetris-source.zip
-          unzip -t arlighttetris-source.zip
+      - name: Set up Gradle 8.14
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.14"
 
-      - name: Prepare 0.6.18 source
-        run: |
-          mkdir project
-          unzip -q arlighttetris-source.zip -d project
-          cd project
-          patch -p1 < ../arlighttetris-0.6.18.patch
-          sed -i "s/version = '0.6.17'/version = '0.6.18'/" build.gradle
-          chmod +x gradlew
-          grep "version = '0.6.18'" build.gradle
-
-      - name: Compile with Gradle
-        working-directory: project
-        run: ./gradlew --no-daemon clean build
+      - name: Compile portrait hotfix
+        working-directory: portraitfix
+        run: gradle --no-daemon clean build
 
       - name: Prepare artifact
         run: |
           mkdir -p artifact
-          JAR=$(find project/build/libs -maxdepth 1 -type f -name '*.jar' ! -name '*sources*' ! -name '*dev*' | head -n 1)
+          JAR=$(find portraitfix/build/libs -maxdepth 1 -type f -name '*.jar' ! -name '*sources*' ! -name '*dev*' | head -n 1)
           test -n "$JAR"
-          cp "$JAR" artifact/ArlightTetris-0.6.18-SKIN-IMAGE.jar
+          cp "$JAR" artifact/ArlightTetris-0.6.18-SKIN-IMAGE-HOTFIX.jar
           ls -lh artifact
 
       - name: Upload compiled JAR
         uses: actions/upload-artifact@v4
         with:
-          name: ArlightTetris-0.6.18-SKIN-IMAGE
-          path: artifact/ArlightTetris-0.6.18-SKIN-IMAGE.jar
+          name: ArlightTetris-0.6.18-SKIN-IMAGE-HOTFIX
+          path: artifact/ArlightTetris-0.6.18-SKIN-IMAGE-HOTFIX.jar
           if-no-files-found: error
           retention-days: 30
