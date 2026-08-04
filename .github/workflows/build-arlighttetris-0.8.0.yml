@@ -36,13 +36,12 @@ jobs:
           unzip -q source.zip -d project
           if [ -d phase1/overrides ]; then cp -a phase1/overrides/. project/; fi
 
-          wc -c phase2/overrides.part*
-          sha256sum phase2/overrides.part*
           test "$(sha256sum phase2/overrides.part00 | cut -d' ' -f1)" = "c712a5f3edf1dcffcb56d34e65a580b9c2cef0eebb7509430e9c16a43d56c9b2"
           test "$(sha256sum phase2/overrides.part01 | cut -d' ' -f1)" = "bf55ad101eb4a1da4db2e103f95b3438a5b1b6991cfe842f23347f8fd58e11ca"
           test "$(sha256sum phase2/overrides.part02 | cut -d' ' -f1)" = "2cb7eace7ba7498a41c2837dfe28cc4df63a358e005aa09b3e7fa9a3ea2fd2d9"
-          test "$(sha256sum phase2/overrides.part03 | cut -d' ' -f1)" = "2b0b86d464f82096f19fe48e46e715a9361a88fa6f00a8d2690f8f50cc1d2a9d"
-          cat phase2/overrides.part00 phase2/overrides.part01 phase2/overrides.part02 phase2/overrides.part03 | base64 -d > phase2-overrides.tar.gz
+          test "$(sha256sum phase2/overrides.fix03a | cut -d' ' -f1)" = "4db6e5cd6e10124008d7498ab8fc5bd8b34ee5b5cd39b48b4d1f225dd3fb2fff"
+          test "$(sha256sum phase2/overrides.fix03b | cut -d' ' -f1)" = "b725b2a720e2c8c041634b9585912120aaa1166e980bed11e8e6f63fb3090339"
+          cat phase2/overrides.part00 phase2/overrides.part01 phase2/overrides.part02 phase2/overrides.fix03a phase2/overrides.fix03b | base64 -d > phase2-overrides.tar.gz
           test "$(sha256sum phase2-overrides.tar.gz | cut -d' ' -f1)" = "48fa27e2fa40050a74949d7c36b03a202f972536d7469ddbee88f45a8daa3c42"
           tar -xzf phase2-overrides.tar.gz -C project
           sed -i 's/RenderLivingEvent.Pre<?, ?, ?>/RenderLivingEvent.Pre<?, ?>/' project/src/main/java/com/arlight/tetris/portraitfix/SkinImageRenderer.java
