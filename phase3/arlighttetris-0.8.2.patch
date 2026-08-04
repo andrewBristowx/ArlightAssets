@@ -1,0 +1,348 @@
+diff --git a/src/main/java/com/arlight/tetris/client/TetrisOverlay.java b/src/main/java/com/arlight/tetris/client/TetrisOverlay.java
+index 2994771..ddcd3b4 100755
+--- a/src/main/java/com/arlight/tetris/client/TetrisOverlay.java
++++ b/src/main/java/com/arlight/tetris/client/TetrisOverlay.java
+@@ -149,15 +149,14 @@ public final class TetrisOverlay implements LayeredDraw.Layer {
+     }
+ 
+     private void drawQueueHint(GuiGraphics graphics, int width) {
+-        int panelWidth = Math.min(430, width - SIDEBAR_WIDTH - 40);
++        int panelWidth = Math.min(520, width - SIDEBAR_WIDTH - 40);
+         int x = Math.max(12, (width - SIDEBAR_WIDTH - panelWidth) / 2);
+         int y = 18;
+-        drawPanel(graphics, x, y, panelWidth, 38, 0xC9120D24, 0xFFFF70D7);
++        drawPanel(graphics, x, y, panelWidth, 24, 0xC9120D24, 0xFFFF70D7);
+         Font font = Minecraft.getInstance().font;
+-        graphics.drawCenteredString(font, Component.literal("✦ TETRIS ARCADE ✦"),
+-                x + panelWidth / 2, y + 7, 0xFFFFA7E4);
+-        graphics.drawCenteredString(font, Component.literal("Entra a una cabina libre y mantente sobre la placa para hacer cola"),
+-                x + panelWidth / 2, y + 22, 0xFF8DEBFF);
++        graphics.drawCenteredString(font,
++                Component.literal("Entra a una cabina libre y mantente sobre la placa para hacer cola"),
++                x + panelWidth / 2, y + 8, 0xFF8DEBFF);
+     }
+ 
+     private void drawArenaSidebar(GuiGraphics graphics, int screenWidth, int screenHeight) {
+@@ -165,16 +164,25 @@ public final class TetrisOverlay implements LayeredDraw.Layer {
+         if (sidebar == null) return;
+ 
+         int x = screenWidth - SIDEBAR_WIDTH - 10;
+-        int y = 14;
+         int width = SIDEBAR_WIDTH;
+         Font font = Minecraft.getInstance().font;
+ 
++        // Cabecera general: TETRIS ARCADE queda encima de JUEGO y SALA.
++        int headerY = 14;
++        int headerHeight = 34;
++        drawPanel(graphics, x, headerY, width, headerHeight, 0xE0120D24, 0xFFFF70D7);
++        graphics.fill(x, headerY, x + width, headerY + 4, 0xFFFF70D7);
++        graphics.drawCenteredString(font, Component.literal("✦ TETRIS ARCADE ✦"),
++                x + width / 2, headerY + 12, 0xFFFFA7E4);
++
++        int gameY = headerY + headerHeight + 8;
+         int gameHeight = ClientGameState.isPlaying() ? 166 : 112;
+-        drawPanel(graphics, x, y, width, gameHeight, 0xDA120D24, 0xFF66E4FF);
+-        graphics.fill(x, y, x + width, y + 4, 0xFF66E4FF);
+-        graphics.drawCenteredString(font, Component.literal("✦ JUEGO ✦"), x + width / 2, y + 11, 0xFFFFFFFF);
++        drawPanel(graphics, x, gameY, width, gameHeight, 0xDA120D24, 0xFF66E4FF);
++        graphics.fill(x, gameY, x + width, gameY + 4, 0xFF66E4FF);
++        graphics.drawCenteredString(font, Component.literal("✦ JUEGO ✦"),
++                x + width / 2, gameY + 11, 0xFFFFFFFF);
+ 
+-        int row = y + 30;
++        int row = gameY + 30;
+         drawSidebarRow(graphics, font, x, width, row, "Estado", stateText(sidebar), stateColor(sidebar)); row += 17;
+         drawSidebarRow(graphics, font, x, width, row, "Jugadores", sidebar.playerCount() + "/" + sidebar.maxPlayers(), 0xFF8DEBFF); row += 17;
+         if (sidebar.slotIndex() >= 0) {
+@@ -202,14 +210,15 @@ public final class TetrisOverlay implements LayeredDraw.Layer {
+             drawSidebarRow(graphics, font, x, width, row, "Inicio", sidebar.countdownSeconds() + "s", 0xFFFFD166);
+         }
+ 
+-        int playerY = y + gameHeight + 8;
+-        int playerHeight = 126;
+-        drawPanel(graphics, x, playerY, width, playerHeight, 0xDA120D24, 0xFFFF70D7);
+-        graphics.fill(x, playerY, x + width, playerY + 4, 0xFFFF70D7);
+-        graphics.drawCenteredString(font, Component.literal("✦ " + sidebar.playerName() + " ✦"),
+-                x + width / 2, playerY + 11, 0xFFFFFFFF);
++        int roomY = gameY + gameHeight + 8;
++        int roomHeight = 144;
++        drawPanel(graphics, x, roomY, width, roomHeight, 0xDA120D24, 0xFFFF70D7);
++        graphics.fill(x, roomY, x + width, roomY + 4, 0xFFFF70D7);
++        graphics.drawCenteredString(font, Component.literal("✦ SALA ✦"),
++                x + width / 2, roomY + 11, 0xFFFFFFFF);
+ 
+-        row = playerY + 31;
++        row = roomY + 30;
++        drawSidebarRow(graphics, font, x, width, row, "Jugador", trim(sidebar.playerName(), 15), 0xFFFFA7E4); row += 17;
+         drawSidebarRow(graphics, font, x, width, row, "Victorias", String.valueOf(sidebar.wins()), 0xFFFFD166); row += 17;
+         drawSidebarRow(graphics, font, x, width, row, "Partidas", String.valueOf(sidebar.games()), 0xFFBEB4CE); row += 17;
+         drawSidebarRow(graphics, font, x, width, row, "Récord", sidebar.bestScore() + " pts", 0xFFFF8DD8); row += 17;
+@@ -217,8 +226,8 @@ public final class TetrisOverlay implements LayeredDraw.Layer {
+         drawSidebarRow(graphics, font, x, width, row, "Mejor nivel", String.valueOf(sidebar.bestLevel()), 0xFF9EEDB8); row += 17;
+         drawSidebarRow(graphics, font, x, width, row, "Mejor tiempo", formatTime(sidebar.bestTimeSeconds()), 0xFFD9C8EF);
+ 
+-        if (!ClientGameState.isInLobbyOrMatch() && screenHeight >= 470) {
+-            int topY = playerY + playerHeight + 8;
++        if (!ClientGameState.isInLobbyOrMatch() && screenHeight >= 540) {
++            int topY = roomY + roomHeight + 8;
+             drawTopPreview(graphics, x, topY, width, sidebar.topScores());
+         }
+     }
+diff --git a/src/main/java/com/arlight/tetris/network/ClientboundArenaSidebarPacket.java b/src/main/java/com/arlight/tetris/network/ClientboundArenaSidebarPacket.java
+index e92c0a6..4f45067 100644
+--- a/src/main/java/com/arlight/tetris/network/ClientboundArenaSidebarPacket.java
++++ b/src/main/java/com/arlight/tetris/network/ClientboundArenaSidebarPacket.java
+@@ -9,6 +9,7 @@ import net.minecraft.resources.ResourceLocation;
+ 
+ import java.util.ArrayList;
+ import java.util.List;
++import java.util.UUID;
+ 
+ /** Datos del sidebar del arcade y del salón de tops. */
+ public record ClientboundArenaSidebarPacket(
+@@ -19,6 +20,9 @@ public record ClientboundArenaSidebarPacket(
+         int maxPlayers,
+         int countdownSeconds,
+         int slotIndex,
++        int arenaCenterX,
++        int arenaCenterY,
++        int arenaCenterZ,
+         int games,
+         int wins,
+         int bestScore,
+@@ -43,6 +47,9 @@ public record ClientboundArenaSidebarPacket(
+             int maxPlayers = ByteBufCodecs.VAR_INT.decode(buffer);
+             int countdown = ByteBufCodecs.VAR_INT.decode(buffer);
+             int slotIndex = ByteBufCodecs.VAR_INT.decode(buffer);
++            int centerX = buffer.readInt();
++            int centerY = buffer.readInt();
++            int centerZ = buffer.readInt();
+             int games = ByteBufCodecs.VAR_INT.decode(buffer);
+             int wins = ByteBufCodecs.VAR_INT.decode(buffer);
+             int bestScore = ByteBufCodecs.VAR_INT.decode(buffer);
+@@ -50,7 +57,8 @@ public record ClientboundArenaSidebarPacket(
+             int bestLevel = ByteBufCodecs.VAR_INT.decode(buffer);
+             int bestTime = ByteBufCodecs.VAR_INT.decode(buffer);
+             return new ClientboundArenaSidebarPacket(inArena, playerName, stateId, playerCount, maxPlayers,
+-                    countdown, slotIndex, games, wins, bestScore, bestLines, bestLevel, bestTime,
++                    countdown, slotIndex, centerX, centerY, centerZ,
++                    games, wins, bestScore, bestLines, bestLevel, bestTime,
+                     decodeTop(buffer), decodeTop(buffer), decodeTop(buffer));
+         }
+ 
+@@ -63,6 +71,9 @@ public record ClientboundArenaSidebarPacket(
+             ByteBufCodecs.VAR_INT.encode(buffer, value.maxPlayers());
+             ByteBufCodecs.VAR_INT.encode(buffer, value.countdownSeconds());
+             ByteBufCodecs.VAR_INT.encode(buffer, value.slotIndex());
++            buffer.writeInt(value.arenaCenterX());
++            buffer.writeInt(value.arenaCenterY());
++            buffer.writeInt(value.arenaCenterZ());
+             ByteBufCodecs.VAR_INT.encode(buffer, value.games());
+             ByteBufCodecs.VAR_INT.encode(buffer, value.wins());
+             ByteBufCodecs.VAR_INT.encode(buffer, value.bestScore());
+@@ -77,6 +88,7 @@ public record ClientboundArenaSidebarPacket(
+ 
+     public static ClientboundArenaSidebarPacket clear() {
+         return new ClientboundArenaSidebarPacket(false, "", -1, 0, 8, -1, -1,
++                0, 0, 0,
+                 0, 0, 0, 0, 0, 0, List.of(), List.of(), List.of());
+     }
+ 
+@@ -85,6 +97,9 @@ public record ClientboundArenaSidebarPacket(
+         ByteBufCodecs.VAR_INT.encode(buffer, size);
+         for (int i = 0; i < size; i++) {
+             TopEntry entry = entries.get(i);
++            UUID id = entry.playerId() == null ? new UUID(0L, 0L) : entry.playerId();
++            buffer.writeLong(id.getMostSignificantBits());
++            buffer.writeLong(id.getLeastSignificantBits());
+             ByteBufCodecs.STRING_UTF8.encode(buffer, entry.name());
+             ByteBufCodecs.VAR_INT.encode(buffer, Math.max(0, entry.value()));
+         }
+@@ -94,7 +109,9 @@ public record ClientboundArenaSidebarPacket(
+         int size = Math.min(10, Math.max(0, ByteBufCodecs.VAR_INT.decode(buffer)));
+         List<TopEntry> entries = new ArrayList<>(size);
+         for (int i = 0; i < size; i++) {
+-            entries.add(new TopEntry(ByteBufCodecs.STRING_UTF8.decode(buffer),
++            UUID id = new UUID(buffer.readLong(), buffer.readLong());
++            entries.add(new TopEntry(id,
++                    ByteBufCodecs.STRING_UTF8.decode(buffer),
+                     ByteBufCodecs.VAR_INT.decode(buffer)));
+         }
+         return List.copyOf(entries);
+@@ -103,5 +120,5 @@ public record ClientboundArenaSidebarPacket(
+     @Override
+     public Type<? extends CustomPacketPayload> type() { return TYPE; }
+ 
+-    public record TopEntry(String name, int value) {}
++    public record TopEntry(UUID playerId, String name, int value) {}
+ }
+diff --git a/src/main/java/com/arlight/tetris/network/NetworkSender.java b/src/main/java/com/arlight/tetris/network/NetworkSender.java
+index f0aadb8..39cce0b 100755
+--- a/src/main/java/com/arlight/tetris/network/NetworkSender.java
++++ b/src/main/java/com/arlight/tetris/network/NetworkSender.java
+@@ -7,6 +7,7 @@ import com.arlight.tetris.multiplayer.LobbyManager;
+ import com.arlight.tetris.multiplayer.MatchConfig;
+ import com.arlight.tetris.stats.TetrisPlayerStats;
+ import com.arlight.tetris.stats.TetrisStatsStore;
++import com.arlight.tetris.world.TetrisArenaConfig;
+ import net.minecraft.server.level.ServerPlayer;
+ import net.neoforged.neoforge.network.PacketDistributor;
+ 
+@@ -94,6 +95,10 @@ public final class NetworkSender {
+     public static void sendArenaSidebar(ServerPlayer player, LobbyManager lobby) {
+         String name = player.getGameProfile().getName();
+         TetrisPlayerStats stats = TetrisStatsStore.get(player.getUUID(), name);
++        var arena = TetrisArenaConfig.load().orElse(null);
++        int centerX = arena == null ? 0 : arena.center().getX();
++        int centerY = arena == null ? 0 : arena.center().getY();
++        int centerZ = arena == null ? 0 : arena.center().getZ();
+         PacketDistributor.sendToPlayer(player, new ClientboundArenaSidebarPacket(
+                 true,
+                 name,
+@@ -102,15 +107,18 @@ public final class NetworkSender {
+                 MatchConfig.MAX_PLAYERS,
+                 lobby.getCountdownSecondsRemaining(),
+                 lobby.getSlotIndex(player.getUUID()),
++                centerX,
++                centerY,
++                centerZ,
+                 stats.games(),
+                 stats.wins(),
+                 stats.bestScore(),
+                 stats.bestLines(),
+                 stats.bestLevel(),
+                 stats.bestTimeSeconds(),
+-                convertTop(TetrisStatsStore.topScores(5)),
+-                convertTop(TetrisStatsStore.topLines(5)),
+-                convertTop(TetrisStatsStore.topWins(5))
++                convertRanked(TetrisStatsStore.topScorePlayers(5)),
++                convertRanked(TetrisStatsStore.topLinePlayers(5)),
++                convertRanked(TetrisStatsStore.topWinPlayers(5))
+         ));
+     }
+ 
+@@ -118,9 +126,11 @@ public final class NetworkSender {
+         if (player != null) PacketDistributor.sendToPlayer(player, ClientboundArenaSidebarPacket.clear());
+     }
+ 
+-    private static List<ClientboundArenaSidebarPacket.TopEntry> convertTop(List<TetrisStatsStore.TopEntry> source) {
++    private static List<ClientboundArenaSidebarPacket.TopEntry> convertRanked(
++            List<TetrisStatsStore.RankedPlayer> source) {
+         return source.stream()
+-                .map(entry -> new ClientboundArenaSidebarPacket.TopEntry(entry.name(), entry.value()))
++                .map(entry -> new ClientboundArenaSidebarPacket.TopEntry(
++                        entry.playerId(), entry.name(), entry.value()))
+                 .toList();
+     }
+ 
+diff --git a/src/main/java/com/arlight/tetris/network/NetworkSetup.java b/src/main/java/com/arlight/tetris/network/NetworkSetup.java
+index 3f88830..96ea42c 100755
+--- a/src/main/java/com/arlight/tetris/network/NetworkSetup.java
++++ b/src/main/java/com/arlight/tetris/network/NetworkSetup.java
+@@ -12,7 +12,7 @@ public final class NetworkSetup {
+ 
+     @net.neoforged.bus.api.SubscribeEvent
+     public static void register(RegisterPayloadHandlersEvent event) {
+-        PayloadRegistrar registrar = event.registrar(ArlightTetrisMod.MODID).versioned("5");
++        PayloadRegistrar registrar = event.registrar(ArlightTetrisMod.MODID).versioned("6");
+ 
+         registrar.playToServer(
+                 ServerboundGameActionPacket.TYPE,
+diff --git a/src/main/java/com/arlight/tetris/portraitfix/SkinImageRenderer.java b/src/main/java/com/arlight/tetris/portraitfix/SkinImageRenderer.java
+index 24cf177..22aebc1 100644
+--- a/src/main/java/com/arlight/tetris/portraitfix/SkinImageRenderer.java
++++ b/src/main/java/com/arlight/tetris/portraitfix/SkinImageRenderer.java
+@@ -27,7 +27,6 @@ import net.neoforged.neoforge.client.event.RenderLivingEvent;
+ /**
+  * Dibuja la skin como retrato 2D plano dentro del panel.
+  */
+-@EventBusSubscriber(modid = ArlightTetrisPortraitFix.MODID, value = Dist.CLIENT)
+ public final class SkinImageRenderer {
+     private static final String MARKER_LARGE = "arlighttetris:portrait_large";
+     private static final String MARKER_SMALL = "arlighttetris:portrait_small";
+diff --git a/src/main/java/com/arlight/tetris/world/ArenaDisplayManager.java b/src/main/java/com/arlight/tetris/world/ArenaDisplayManager.java
+index 424df8b..8e37699 100644
+--- a/src/main/java/com/arlight/tetris/world/ArenaDisplayManager.java
++++ b/src/main/java/com/arlight/tetris/world/ArenaDisplayManager.java
+@@ -112,33 +112,25 @@ public final class ArenaDisplayManager {
+ 
+     private void refresh(ServerLevel level, BlockPos center, MinecraftServer server, LobbyManager lobby) {
+         clearDynamicText(level, center);
+-        ensureRankPaintings(level, center);
++        clearLegacyRankPaintings(level, center);
+ 
+         spawnMainStatus(level, center, lobby);
+         spawnPodLabels(level, center, server, lobby);
+         spawnSidePanels(level, center, lobby);
+-
+-        spawnRankingOverlay(level, center, server, -22, TetrisStatsStore.topScorePlayers(3), "pts", ChatFormatting.GOLD);
+-        spawnRankingOverlay(level, center, server, 0, TetrisStatsStore.topLinePlayers(3), "líneas", ChatFormatting.AQUA);
+-        spawnRankingOverlay(level, center, server, 22, TetrisStatsStore.topWinPlayers(3), "victorias", ChatFormatting.LIGHT_PURPLE);
+     }
+ 
+-    private void ensureRankPaintings(ServerLevel level, BlockPos center) {
++    /**
++     * Los rankings ya no son entidades Painting. El cliente compone fondo,
++     * skins y textos en un único renderer, así que eliminamos pinturas viejas
++     * para evitar culling, parpadeo o z-fighting.
++     */
++    private void clearLegacyRankPaintings(ServerLevel level, BlockPos center) {
+         AABB area = new AABB(center).inflate(TetrisArena.HALF_SIZE + 8,
+                 TetrisArena.WALL_HEIGHT + 10, TetrisArena.HALF_SIZE + 8);
+-        List<Painting> existing = level.getEntitiesOfClass(Painting.class, area,
+-                painting -> painting.getTags().contains(PAINTING_TAG));
+-        if (!forceRebuildPaintings && existing.size() == 3) return;
+-
+-        existing.forEach(Painting::discard);
++        level.getEntitiesOfClass(Painting.class, area,
++                        painting -> painting.getTags().contains(PAINTING_TAG))
++                .forEach(Painting::discard);
+         forceRebuildPaintings = false;
+-        // Los paneles ahora ocupan prácticamente todo el paño negro (15x13).
+-        // Bajamos 1 bloque el anclaje para centrar mejor la nueva altura.
+-        // Los centros físicos de los tres paños negros son -22, 0 y +22.
+-        // Antes se usaban -27/+27 y los laterales quedaban parcialmente sin respaldo.
+-        spawnPainting(level, center.offset(-22, 11, 40), POINTS_VARIANT);
+-        spawnPainting(level, center.offset(0, 11, 40), LINES_VARIANT);
+-        spawnPainting(level, center.offset(22, 11, 40), WINS_VARIANT);
+     }
+ 
+     private void spawnPainting(ServerLevel level, BlockPos pos, ResourceLocation id) {
+diff --git a/src/main/java/com/arlight/tetris/world/ArenaMatchListener.java b/src/main/java/com/arlight/tetris/world/ArenaMatchListener.java
+index e34bb53..06217b9 100755
+--- a/src/main/java/com/arlight/tetris/world/ArenaMatchListener.java
++++ b/src/main/java/com/arlight/tetris/world/ArenaMatchListener.java
+@@ -1,6 +1,7 @@
+ package com.arlight.tetris.world;
+ 
+ import com.arlight.tetris.integration.ArlightCoreIntegration;
++import com.arlight.tetris.integration.XaeroMinimapIntegration;
+ import com.arlight.tetris.multiplayer.LobbyManager;
+ import com.arlight.tetris.network.NetworkSender;
+ import com.arlight.tetris.stats.TetrisStatsStore;
+@@ -149,7 +150,11 @@ public final class ArenaMatchListener implements LobbyManager.Listener {
+ 
+         Set<UUID> currentlyInside = new HashSet<>();
+         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+-            boolean inside = player.serverLevel() == level && TetrisArena.isInsideArena(
++            boolean inArenaWorld = player.serverLevel() == level;
++            if (inArenaWorld && tickCounter % 20 == 0) {
++                XaeroMinimapIntegration.keepHidden(player);
++            }
++            boolean inside = inArenaWorld && TetrisArena.isInsideArena(
+                     arena.get().center(), player.getX(), player.getY(), player.getZ());
+             if (!inside) {
+                 enteredPodTicks.remove(player.getUUID());
+diff --git a/src/main/resources/META-INF/neoforge.mods.toml b/src/main/resources/META-INF/neoforge.mods.toml
+index c934429..a287533 100755
+--- a/src/main/resources/META-INF/neoforge.mods.toml
++++ b/src/main/resources/META-INF/neoforge.mods.toml
+@@ -7,7 +7,7 @@ issueTrackerURL = ""
+ modId = "arlighttetris"
+ version = "${mod_version}"
+ displayName = "Tetris Arcade"
+-description = '''Tetris Arcade para NeoForge 1.21.1 con gameplay competitivo, fase 2, revancha, reconexión, sonidos, animaciones y velocidad solo acelerada.'''
++description = '''Tetris Arcade para NeoForge 1.21.1 con paneles de ranking unificados, gameplay competitivo, fase 2, revancha, reconexión, sonidos, animaciones y ocultación de Xaero en la arena.'''
+ authors = "Arlight"
+ 
+ [[mods]]
