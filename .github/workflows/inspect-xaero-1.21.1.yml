@@ -18,31 +18,27 @@ jobs:
         run: |
           curl -L --fail --retry 4 -o xaero.jar 'https://cdn.modrinth.com/data/1bokaNcj/versions/CatMvRfN/xaerominimap-neoforge-1.21.1-25.3.10.jar'
           unzip -t xaero.jar >/dev/null
-      - name: Inspect classes and strings
+      - name: Inspect exact client suppression API
         shell: bash
         run: |
-          echo '===== MOD METADATA ====='
-          unzip -p xaero.jar META-INF/neoforge.mods.toml 2>/dev/null || true
-          echo '===== RELEVANT CLASS NAMES ====='
-          jar tf xaero.jar | grep '\.class$' | grep -Ei 'xaero/.+(minimap|hud|render|setting|option|effect|overlay|gui)' | head -n 600 || true
-          rm -rf xaero_unzip && mkdir xaero_unzip
-          cd xaero_unzip
-          jar xf ../xaero.jar
-          echo '===== CLASSES CONTAINING NO_MINIMAP / RENDER REFERENCES ====='
-          grep -aRIl -E 'no_minimap|noMinimap|minimapEnabled|hideMinimap|renderMinimap|MinimapRenderer|GuiRender' . | head -n 200 || true
-          echo '===== JAVAP SELECTED CANDIDATES ====='
-          cd ..
-          for cls in \
-            xaero.hud.minimap.BuiltInHudModules \
-            xaero.hud.minimap.Minimap \
-            xaero.hud.minimap.MinimapProcessor \
-            xaero.hud.minimap.module.MinimapSession \
-            xaero.hud.minimap.module.MinimapModule \
-            xaero.common.XaeroMinimapSession \
-            xaero.common.minimap.MinimapProcessor \
-            xaero.common.settings.ModSettings \
-            xaero.common.settings.ModOptions \
-            xaero.common.minimap.render.MinimapRenderer; do
-              echo "----- $cls -----"
-              javap -classpath xaero.jar -p -c "$cls" 2>/dev/null | head -n 420 || true
-          done
+          echo '===== MINIMAP PROCESSOR MEMBERS ====='
+          javap -classpath xaero.jar -p xaero.common.minimap.MinimapProcessor | grep -i -C 8 'noMinimap' || true
+          echo '===== MINIMAP PROCESSOR FIELD USAGE ====='
+          javap -classpath xaero.jar -p -c xaero.common.minimap.MinimapProcessor > processor.txt
+          grep -n -C 35 'noMinimapMessageReceived' processor.txt || true
+          echo '===== CLIENT CONFIG MANAGER ====='
+          javap -classpath xaero.jar -p xaero.lib.client.config.ClientConfigManager || true
+          echo '===== BOOLEAN CONFIG OPTION ====='
+          javap -classpath xaero.jar -p xaero.lib.common.config.option.BooleanConfigOption || true
+          echo '===== CONFIG OPTION ====='
+          javap -classpath xaero.jar -p xaero.lib.common.config.option.ConfigOption || true
+          echo '===== HUD MODULE ====='
+          javap -classpath xaero.jar -p -c xaero.hud.module.HudModule || true
+          echo '===== MODULE SESSION ====='
+          javap -classpath xaero.jar -p -c xaero.hud.module.ModuleSession || true
+          echo '===== HUD RENDERER ====='
+          javap -classpath xaero.jar -p -c xaero.hud.render.HudRenderer > hudrenderer.txt
+          grep -n -C 45 'isActive\|DISPLAY_MINIMAP\|getEffective\|render' hudrenderer.txt | head -n 1000 || true
+          echo '===== MINIMAP EFFECT ====='
+          javap -classpath xaero.jar -p -c xaero.common.effect.NoMinimapEffect || true
+          javap -classpath xaero.jar -p -c xaero.common.effect.MinimapStatusEffect || true
