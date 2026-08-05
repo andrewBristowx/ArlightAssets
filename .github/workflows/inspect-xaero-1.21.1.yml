@@ -1,0 +1,48 @@
+name: Inspect Xaero Minimap 1.21.1
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Download official Xaero jar
+        run: |
+          curl -L --fail --retry 4 -o xaero.jar 'https://cdn.modrinth.com/data/1bokaNcj/versions/CatMvRfN/xaerominimap-neoforge-1.21.1-25.3.10.jar'
+          unzip -t xaero.jar >/dev/null
+      - name: Inspect classes and strings
+        shell: bash
+        run: |
+          echo '===== MOD METADATA ====='
+          unzip -p xaero.jar META-INF/neoforge.mods.toml 2>/dev/null || true
+          echo '===== RELEVANT CLASS NAMES ====='
+          jar tf xaero.jar | grep '\.class$' | grep -Ei 'xaero/.+(minimap|hud|render|setting|option|effect|overlay|gui)' | head -n 600 || true
+          rm -rf xaero_unzip && mkdir xaero_unzip
+          cd xaero_unzip
+          jar xf ../xaero.jar
+          echo '===== CLASSES CONTAINING NO_MINIMAP / RENDER REFERENCES ====='
+          grep -aRIl -E 'no_minimap|noMinimap|minimapEnabled|hideMinimap|renderMinimap|MinimapRenderer|GuiRender' . | head -n 200 || true
+          echo '===== JAVAP SELECTED CANDIDATES ====='
+          cd ..
+          for cls in \
+            xaero.hud.minimap.BuiltInHudModules \
+            xaero.hud.minimap.Minimap \
+            xaero.hud.minimap.MinimapProcessor \
+            xaero.hud.minimap.module.MinimapSession \
+            xaero.hud.minimap.module.MinimapModule \
+            xaero.common.XaeroMinimapSession \
+            xaero.common.minimap.MinimapProcessor \
+            xaero.common.settings.ModSettings \
+            xaero.common.settings.ModOptions \
+            xaero.common.minimap.render.MinimapRenderer; do
+              echo "----- $cls -----"
+              javap -classpath xaero.jar -p -c "$cls" 2>/dev/null | head -n 420 || true
+          done
