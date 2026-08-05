@@ -30,8 +30,8 @@ jobs:
       - name: Download source inputs from project Drive
         run: |
           python -m pip install --disable-pip-version-check -q gdown
-          gdown --id 1VCbCsDFYS1lzXzd3lyEZnKS_X_pK6d8z -O tetris-source.zip
-          gdown --id 19TwuMX2oW7fw-cAjZS9sMZ38w7GhdgSu -O core-source.zip
+          gdown 1VCbCsDFYS1lzXzd3lyEZnKS_X_pK6d8z -O tetris-source.zip
+          gdown 19TwuMX2oW7fw-cAjZS9sMZ38w7GhdgSu -O core-source.zip
           echo "297d6b03e34591a90090e5cbd737fed3ee03db647f949aa397c7e8492461105c  tetris-source.zip" | sha256sum -c -
           echo "5fc7de095259a309b304bca16baa8190b24c13e9d0159c38c04e6f2beeba748c  core-source.zip" | sha256sum -c -
           mkdir tetris core
