@@ -1,0 +1,75 @@
+name: Build ArlightCore 1.25.3 Legos Inventory Fix
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Download corrected source
+        run: |
+          python -m pip install --disable-pip-version-check -q gdown
+          gdown 1u3DCN0zxqQBAHDBWW6ISrqsBr4ufAKWD -O source.zip
+          echo "1869ef5ff6ee6e38a932db82bf0018774ba655aa0b8b09af21b59c40718e9526  source.zip" | sha256sum -c -
+          mkdir project
+          unzip -q source.zip -d project
+
+      - name: Source audit
+        run: |
+          grep -q "<version>1.25.3</version>" project/pom.xml
+          grep -q "version: '1.25.3'" project/src/main/resources/plugin.yml
+          grep -q "core.isGeneralLobbyWorld" project/src/main/java/com/arlight/core/items/CoreItems.java
+          grep -q "removeOrphanedTetrisProfile" project/src/main/java/com/arlight/core/items/CoreItems.java
+          grep -q "long\[\] delays = {1L, 5L, 12L, 24L, 40L};" project/src/main/java/com/arlight/core/listeners/CoreItemListener.java
+          grep -q "!plugin.getSessionManager().isPendingRestore" project/src/main/java/com/arlight/core/listeners/CoreItemListener.java
+
+      - name: Compile ArlightCore 1.25.3
+        working-directory: project
+        run: mvn -B -DskipTests clean package
+
+      - name: Validate JAR
+        run: |
+          JAR=$(find project/target -maxdepth 1 -type f -name 'ArlightCore-1.25.3.jar' | head -n 1)
+          test -n "$JAR"
+          unzip -p "$JAR" plugin.yml | grep -q "version: '1.25.3'"
+          jar tf "$JAR" | grep -q 'com/arlight/core/listeners/CoreItemListener.class'
+          jar tf "$JAR" | grep -q 'com/arlight/core/items/CoreItems.class'
+          javap -classpath "$JAR" -c com.arlight.core.items.CoreItems | grep -q 'isGeneralLobbyWorld'
+          javap -classpath "$JAR" -c com.arlight.core.listeners.CoreItemListener | grep -q 'isPendingRestore'
+
+      - name: Prepare delivery
+        run: |
+          mkdir -p delivery
+          JAR=$(find project/target -maxdepth 1 -type f -name 'ArlightCore-1.25.3.jar' | head -n 1)
+          cp "$JAR" delivery/ArlightCore-1.25.3-LEGOS-INVENTORY-FIX.jar
+          cp source.zip delivery/ArlightCore-1.25.3-LEGOS-INVENTORY-FIX-SOURCE.zip
+          cat > delivery/INSTALACION-CORE-1.25.3.txt <<'TXT'
+          1. Apaga completamente el servidor.
+          2. Elimina ArlightCore 1.25.2 de plugins.
+          3. Instala ArlightCore-1.25.3-LEGOS-INVENTORY-FIX.jar.
+          4. Conserva ArlightTetris 0.9.5 en servidor y clientes; no necesita reemplazo.
+          5. Inicia el servidor y entra al mundo legos.
+          6. Espera dos segundos. Core quitará concreto rosa, libro y puerta de Tetris y entregará los objetos normales.
+          7. Si ya estabas conectado al recargar, ejecuta /core items una vez.
+          TXT
+          sha256sum delivery/ArlightCore-1.25.3-LEGOS-INVENTORY-FIX.jar > delivery/SHA256.txt
+
+      - name: Upload delivery
+        uses: actions/upload-artifact@v4
+        with:
+          name: ArlightCore-1.25.3-LEGOS-INVENTORY-FIX
+          path: delivery/*
+          if-no-files-found: error
+          retention-days: 30
