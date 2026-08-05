@@ -1,0 +1,98 @@
+name: Build ArlightTetris 0.9.4 Eight Mode Pods
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle 8.14
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.14'
+
+      - name: Download corrected sources
+        run: |
+          python -m pip install --disable-pip-version-check -q gdown
+          gdown 1F3Eo1fUZiDYGxJHhto_LNSfp6MVikirs -O tetris-source.zip
+          gdown 1QcmMK8hkE3sexw5kKLdKW0Pe56seEAPd -O core-source.zip
+          echo "bc59febbdedf07624bc7733517861a21744d0b31e14f81aa85c1a257ff0b39e2  tetris-source.zip" | sha256sum -c -
+          echo "923811cbf2b5c1f18182bbe9e49d300ccc9c9d06b40ef1a9645ebd95c91a051d  core-source.zip" | sha256sum -c -
+          mkdir tetris core
+          unzip -q tetris-source.zip -d tetris
+          unzip -q core-source.zip -d core
+
+      - name: Source audit
+        run: |
+          grep -q "version = '0.9.4'" tetris/build.gradle
+          grep -q 'versioned("10")' tetris/src/main/java/com/arlight/tetris/network/NetworkSetup.java
+          grep -q 'record ModeJoinTarget' tetris/src/main/java/com/arlight/tetris/world/TetrisArena.java
+          grep -q 'for (int slot = 0; slot < MatchConfig.MAX_PLAYERS; slot++)' tetris/src/main/java/com/arlight/tetris/world/TetrisArenaBuilder.java
+          grep -q 'configureGeneratedLobby(String worldName' core/src/main/java/com/arlight/core/tetris/TetrisLobbyManager.java
+          grep -q '<version>1.25.1</version>' core/pom.xml
+
+      - name: Compile ArlightTetris 0.9.4
+        working-directory: tetris
+        run: gradle --no-daemon clean build
+
+      - name: Compile ArlightCore 1.25.1
+        working-directory: core
+        run: mvn -B -DskipTests clean package
+
+      - name: Validate outputs
+        run: |
+          TETRIS_JAR=$(find tetris/build/libs -maxdepth 1 -type f -name '*.jar' ! -name '*sources*' ! -name '*dev*' | head -n 1)
+          CORE_JAR=$(find core/target -maxdepth 1 -type f -name 'ArlightCore-1.25.1.jar' | head -n 1)
+          test -n "$TETRIS_JAR"
+          test -n "$CORE_JAR"
+          jar tf "$TETRIS_JAR" | grep -q 'com/arlight/tetris/world/TetrisArena$ModeJoinTarget.class'
+          jar tf "$TETRIS_JAR" | grep -q 'com/arlight/tetris/multiplayer/LobbyManager.class'
+          unzip -p "$TETRIS_JAR" META-INF/neoforge.mods.toml | grep -q 'version = "0.9.4"'
+          unzip -p "$CORE_JAR" plugin.yml | grep -q "version: '1.25.1'"
+          javap -classpath "$CORE_JAR" com.arlight.core.tetris.TetrisLobbyManager | grep -q 'configureGeneratedLobby(java.lang.String, int, int, int)'
+
+      - name: Prepare delivery
+        run: |
+          mkdir -p delivery
+          TETRIS_JAR=$(find tetris/build/libs -maxdepth 1 -type f -name '*.jar' ! -name '*sources*' ! -name '*dev*' | head -n 1)
+          CORE_JAR=$(find core/target -maxdepth 1 -type f -name 'ArlightCore-1.25.1.jar' | head -n 1)
+          cp "$TETRIS_JAR" delivery/ArlightTetris-0.9.4-EIGHT-MODE-PODS.jar
+          cp "$CORE_JAR" delivery/ArlightCore-1.25.1-STABLE-TETRIS-LOBBY.jar
+          cp tetris-source.zip delivery/ArlightTetris-0.9.4-EIGHT-MODE-PODS-SOURCE.zip
+          cp core-source.zip delivery/ArlightCore-1.25.1-STABLE-TETRIS-LOBBY-SOURCE.zip
+          cat > delivery/INSTALACION-0.9.4-1.25.1.txt <<'TXT'
+          1. Apaga completamente el servidor y todos los clientes.
+          2. Sustituye ArlightTetris 0.9.3 por ArlightTetris 0.9.4 en servidor y clientes.
+          3. Sustituye ArlightCore 1.25.0 por ArlightCore 1.25.1 en plugins.
+          4. Inicia el servidor y entra al mundo de Tetris con una cuenta OP.
+          5. Ejecuta /tetris arena upgrade phase3 para reconstruir solo la galería.
+          6. La galería tendrá un selector grande y ocho puestos por cada modo.
+          7. Pisa una placa de puesto durante un segundo: seleccionará el modo y la cabina.
+          8. No ejecutes /tetris arena build sobre una arena existente.
+          TXT
+          sha256sum delivery/*.jar > delivery/SHA256.txt
+          cd delivery
+          zip -q Arlight-Tetris-0.9.4-Core-1.25.1-DELIVERY.zip \
+            ArlightTetris-0.9.4-EIGHT-MODE-PODS.jar \
+            ArlightCore-1.25.1-STABLE-TETRIS-LOBBY.jar \
+            INSTALACION-0.9.4-1.25.1.txt SHA256.txt
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ArlightTetris-0.9.4-Core-1.25.1
+          path: delivery/*
+          if-no-files-found: error
+          retention-days: 30
