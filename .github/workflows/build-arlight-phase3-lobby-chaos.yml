@@ -1,0 +1,96 @@
+name: Build Arlight Phase 3 Lobby Chaos
+
+on:
+  push:
+    branches:
+      - build/arlight-phase3-lobby-chaos
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle 8.14
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.14'
+
+      - name: Download source inputs
+        run: |
+          python -m pip install --disable-pip-version-check -q gdown
+          gdown 1ZTIeqclaBQyBuLz3q8ZSWTOehZfxh1Yj -O tetris-source.zip
+          gdown 1yrOsfHr-tJ0oGS1Up0LdqpfpxKJ52X7z -O core-source.zip
+          echo "de02c5869c26ec7e81c0305f7537e34dda7d31eac2543b3bfd26990a86c83f67  tetris-source.zip" | sha256sum -c -
+          echo "681b8a0eea18d6f1260e2a4b123eb676c82df1784c997cde31bcc9c72344c4f2  core-source.zip" | sha256sum -c -
+          mkdir tetris core
+          unzip -q tetris-source.zip -d tetris
+          unzip -q core-source.zip -d core
+
+      - name: Compile ArlightTetris 0.9.1
+        working-directory: tetris
+        run: gradle --no-daemon clean build
+
+      - name: Compile ArlightCore 1.24.0
+        working-directory: core
+        run: mvn -B -DskipTests clean package
+
+      - name: Validate outputs
+        run: |
+          TETRIS_JAR=$(find tetris/build/libs -maxdepth 1 -type f -name '*.jar' ! -name '*sources*' ! -name '*dev*' | head -n 1)
+          CORE_JAR=$(find core/target -maxdepth 1 -type f -name 'ArlightCore-1.24.0.jar' | head -n 1)
+          test -n "$TETRIS_JAR"
+          test -n "$CORE_JAR"
+          jar tf "$TETRIS_JAR" | grep -q 'ClientboundBoardStatePacket.class'
+          jar tf "$TETRIS_JAR" | grep -q 'TetrisOverlay.class'
+          jar tf "$CORE_JAR" | grep -q 'TetrisLobbyManager.class'
+          jar tf "$CORE_JAR" | grep -q 'TetrisModeGUI.class'
+
+      - name: Prepare delivery
+        run: |
+          mkdir -p delivery
+          TETRIS_JAR=$(find tetris/build/libs -maxdepth 1 -type f -name '*.jar' ! -name '*sources*' ! -name '*dev*' | head -n 1)
+          CORE_JAR=$(find core/target -maxdepth 1 -type f -name 'ArlightCore-1.24.0.jar' | head -n 1)
+          cp "$TETRIS_JAR" delivery/ArlightTetris-0.9.1-CHAOS-LOBBY.jar
+          cp "$CORE_JAR" delivery/ArlightCore-1.24.0-PERSONALIZED-TETRIS-LOBBY.jar
+          cp tetris-source.zip delivery/ArlightTetris-0.9.1-CHAOS-LOBBY-SOURCE.zip
+          cp core-source.zip delivery/ArlightCore-1.24.0-PERSONALIZED-TETRIS-LOBBY-SOURCE.zip
+          cat > delivery/INSTALACION-0.9.1-1.24.0.txt <<'TXT'
+          1. Apaga servidor y clientes.
+          2. Sustituye ArlightTetris 0.9.0 por 0.9.1 en servidor y clientes.
+          3. Sustituye ArlightCore 1.23.0 por 1.24.0 en plugins.
+          4. Reinicia el servidor.
+          5. Para cada estación mira el bloque y ejecuta:
+             /core tetrisstation set versus
+             /core tetrisstation set sprint
+             /core tetrisstation set ultra
+             /core tetrisstation set marathon
+             /core tetrisstation set chaos
+          6. Comprueba las estaciones con /core tetrisstation list.
+          7. Pisa o haz click en una estación y entra a una cabina.
+          TXT
+          sha256sum delivery/*.jar > delivery/SHA256.txt
+          cd delivery
+          zip -q Arlight-Phase3-Lobby-Chaos-DELIVERY.zip \
+            ArlightTetris-0.9.1-CHAOS-LOBBY.jar \
+            ArlightCore-1.24.0-PERSONALIZED-TETRIS-LOBBY.jar \
+            INSTALACION-0.9.1-1.24.0.txt SHA256.txt
+
+      - name: Upload compiled delivery
+        uses: actions/upload-artifact@v4
+        with:
+          name: Arlight-Phase3-Lobby-Chaos
+          path: delivery/*
+          if-no-files-found: error
+          retention-days: 30
