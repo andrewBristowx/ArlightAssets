@@ -1,0 +1,90 @@
+name: Build Arlight Phase 3 Foundation
+
+on:
+  push:
+    branches:
+      - build/arlight-phase3-foundation
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Set up Gradle 8.14
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.14'
+
+      - name: Download source inputs from project Drive
+        run: |
+          python -m pip install --disable-pip-version-check -q gdown
+          gdown --id 1VCbCsDFYS1lzXzd3lyEZnKS_X_pK6d8z -O tetris-source.zip
+          gdown --id 19TwuMX2oW7fw-cAjZS9sMZ38w7GhdgSu -O core-source.zip
+          echo "297d6b03e34591a90090e5cbd737fed3ee03db647f949aa397c7e8492461105c  tetris-source.zip" | sha256sum -c -
+          echo "5fc7de095259a309b304bca16baa8190b24c13e9d0159c38c04e6f2beeba748c  core-source.zip" | sha256sum -c -
+          mkdir tetris core
+          unzip -q tetris-source.zip -d tetris
+          unzip -q core-source.zip -d core
+
+      - name: Compile ArlightTetris 0.9.0
+        working-directory: tetris
+        run: gradle --no-daemon clean build
+
+      - name: Compile ArlightCore 1.23.0
+        working-directory: core
+        run: mvn -B -DskipTests clean package
+
+      - name: Validate outputs
+        run: |
+          TETRIS_JAR=$(find tetris/build/libs -maxdepth 1 -type f -name '*.jar' ! -name '*sources*' ! -name '*dev*' | head -n 1)
+          CORE_JAR=$(find core/target -maxdepth 1 -type f -name 'ArlightCore-1.23.0.jar' | head -n 1)
+          test -n "$TETRIS_JAR"
+          test -n "$CORE_JAR"
+          jar tf "$TETRIS_JAR" | grep -q 'textures/gui/tetris_waiting_background.png'
+          jar tf "$TETRIS_JAR" | grep -q 'TetrisGameMode.class'
+          jar tf "$TETRIS_JAR" | grep -q 'TetrisModeStatsStore.class'
+          jar tf "$CORE_JAR" | grep -q 'TetrisModeGUI.class'
+          jar tf "$CORE_JAR" | grep -q 'MinigameProvider.class'
+
+      - name: Prepare delivery
+        run: |
+          mkdir -p delivery
+          TETRIS_JAR=$(find tetris/build/libs -maxdepth 1 -type f -name '*.jar' ! -name '*sources*' ! -name '*dev*' | head -n 1)
+          CORE_JAR=$(find core/target -maxdepth 1 -type f -name 'ArlightCore-1.23.0.jar' | head -n 1)
+          cp "$TETRIS_JAR" delivery/ArlightTetris-0.9.0-PHASE3-FOUNDATION.jar
+          cp "$CORE_JAR" delivery/ArlightCore-1.23.0-TETRIS-LOBBY.jar
+          cp tetris-source.zip delivery/ArlightTetris-0.9.0-PHASE3-FOUNDATION-SOURCE.zip
+          cp core-source.zip delivery/ArlightCore-1.23.0-TETRIS-LOBBY-SOURCE.zip
+          cat > delivery/INSTALACION-FASE3.txt <<'TXT'
+          1. Apaga completamente servidor y clientes.
+          2. Sustituye ArlightCore 1.22.0 por ArlightCore 1.23.0 en plugins.
+          3. Sustituye ArlightTetris 0.8.2 por ArlightTetris 0.9.0 en servidor y clientes.
+          4. Entra al mundo del lobby de Tetris y ejecuta /core settetrislobby.
+          5. Reinicia el servidor una vez más.
+          6. El botón Tetris del selector general ahora abre el lobby dedicado.
+          7. Usa el compás del lobby de Tetris para escoger el modo y entra a una cabina.
+          TXT
+          sha256sum delivery/*.jar > delivery/SHA256.txt
+          cd delivery
+          zip -q Arlight-Phase3-Foundation-DELIVERY.zip \
+            ArlightTetris-0.9.0-PHASE3-FOUNDATION.jar \
+            ArlightCore-1.23.0-TETRIS-LOBBY.jar \
+            INSTALACION-FASE3.txt SHA256.txt
+
+      - name: Upload compiled delivery
+        uses: actions/upload-artifact@v4
+        with:
+          name: Arlight-Phase3-Foundation
+          path: delivery/*
+          if-no-files-found: error
+          retention-days: 30
