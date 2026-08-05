@@ -1,0 +1,89 @@
+name: Build ArlightTetris 0.9.5 and Core 1.25.2
+
+on:
+  push:
+    branches:
+      - build/arlight-tetris-0.9.5-core-1.25.2
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle 8.14
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.14'
+
+      - name: Download source inputs
+        run: |
+          python -m pip install --disable-pip-version-check -q gdown
+          gdown 1K-jgWVngAIsESkmIDsp8chD270J-oQ0p -O core-source.zip
+          gdown 1c3cfJ76L9-AHrkmrfpNNrWXIfxWlCwQc -O tetris-source.zip
+          echo "69f4bc3acb78be27717cb9d0d140f1a53be5523b18e408a7d62c7ce551120d59  core-source.zip" | sha256sum -c -
+          echo "80f4a0a474ec9d68898ef6b35bb62eab70f17cb2ea49dd9de616bcb282d8509d  tetris-source.zip" | sha256sum -c -
+          mkdir core tetris
+          unzip -q core-source.zip -d core
+          unzip -q tetris-source.zip -d tetris
+
+      - name: Compile ArlightCore 1.25.2
+        working-directory: core
+        run: mvn -B -DskipTests clean package
+
+      - name: Compile ArlightTetris 0.9.5
+        working-directory: tetris
+        run: gradle --no-daemon clean build
+
+      - name: Validate outputs
+        run: |
+          CORE_JAR=$(find core/target -maxdepth 1 -type f -name 'ArlightCore-1.25.2.jar' | head -n 1)
+          TETRIS_JAR=$(find tetris/build/libs -maxdepth 1 -type f -name '*.jar' ! -name '*sources*' ! -name '*dev*' | head -n 1)
+          test -n "$CORE_JAR"
+          test -n "$TETRIS_JAR"
+          unzip -p "$CORE_JAR" plugin.yml | grep -q "version: '1.25.2'"
+          javap -classpath "$CORE_JAR" -c com.arlight.core.items.CoreItems | grep -q 'PINK_CONCRETE'
+          jar tf "$TETRIS_JAR" | grep -q 'com/arlight/tetris/portraitfix/RankPanelRenderer.class'
+          unzip -p "$TETRIS_JAR" META-INF/neoforge.mods.toml | grep -q 'version = "0.9.5"'
+
+      - name: Prepare delivery
+        run: |
+          mkdir -p delivery
+          CORE_JAR=$(find core/target -maxdepth 1 -type f -name 'ArlightCore-1.25.2.jar' | head -n 1)
+          TETRIS_JAR=$(find tetris/build/libs -maxdepth 1 -type f -name '*.jar' ! -name '*sources*' ! -name '*dev*' | head -n 1)
+          cp "$CORE_JAR" delivery/ArlightCore-1.25.2-PINK-TETRIS-HOTFIX.jar
+          cp "$TETRIS_JAR" delivery/ArlightTetris-0.9.5-SKIN-PINK-HOTFIX.jar
+          cp core-source.zip delivery/ArlightCore-1.25.2-PINK-TETRIS-HOTFIX-SOURCE.zip
+          cp tetris-source.zip delivery/ArlightTetris-0.9.5-SKIN-PINK-HOTFIX-SOURCE.zip
+          cat > delivery/INSTALACION-0.9.5-1.25.2.txt <<'TXT'
+          1. Apaga servidor y clientes.
+          2. Sustituye Core 1.25.1 por ArlightCore 1.25.2 en plugins.
+          3. Sustituye Tetris 0.9.4 por ArlightTetris 0.9.5 en servidor y clientes.
+          4. Inicia el servidor y ejecuta /tetris arena refresh dentro de tetris_arena.
+          5. Regresa a legos y prueba el bloque de concreto rosa del selector.
+          6. La primera entrada corrige automáticamente el mundo/spawn del lobby de Tetris.
+          TXT
+          sha256sum delivery/*.jar > delivery/SHA256.txt
+          cd delivery
+          zip -q Arlight-Tetris-0.9.5-Core-1.25.2-DELIVERY.zip \
+            ArlightCore-1.25.2-PINK-TETRIS-HOTFIX.jar \
+            ArlightTetris-0.9.5-SKIN-PINK-HOTFIX.jar \
+            INSTALACION-0.9.5-1.25.2.txt SHA256.txt
+
+      - name: Upload delivery
+        uses: actions/upload-artifact@v4
+        with:
+          name: Arlight-Tetris-0.9.5-Core-1.25.2
+          path: delivery/*
+          if-no-files-found: error
+          retention-days: 30
