@@ -57,7 +57,7 @@ jobs:
           jar tf "$TETRIS_JAR" | grep -q 'com/arlight/tetris/portraitfix/RankPanelRenderer.class'
           jar tf "$TETRIS_JAR" | grep -q 'com/arlight/tetris/network/ClientboundArenaSidebarPacket.class'
           jar tf "$CORE_JAR" | grep -q 'com/arlight/core/tetris/TetrisLobbyManager.class'
-          jar tf "$CORE_JAR" | grep -q 'com/arlight/core/tetris/TetrisModeGUI.class'
+          jar tf "$CORE_JAR" | grep -q 'com/arlight/core/gui/TetrisModeGUI.class'
 
       - name: Prepare delivery
         run: |
