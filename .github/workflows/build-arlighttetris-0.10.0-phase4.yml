@@ -1,0 +1,86 @@
+name: Build ArlightTetris 0.10.0 Xaero Position Fix
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle 8.14
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.14'
+
+      - name: Download patched source
+        run: |
+          python -m pip install --disable-pip-version-check -q gdown
+          gdown 1zd9Y6EmgyK_fgfAHbmV_Bvs5QyIeh_m0 -O source.zip
+          echo "153aeef1c301fa23f477822dc25940f01c4aa796a907a60843c4c4ab875852af  source.zip" | sha256sum -c -
+          mkdir project
+          unzip -q source.zip -d project
+
+      - name: Source audit
+        run: |
+          grep -q "version = '0.10.0'" project/build.gradle
+          grep -q "NORTH_PANEL_BASE_SCALE = 0.80F" project/src/main/java/com/arlight/tetris/portraitfix/RankPanelRenderer.java
+          grep -q "SOUTH_PANEL_BASE_SCALE = 0.84F" project/src/main/java/com/arlight/tetris/portraitfix/RankPanelRenderer.java
+          grep -q "pose.translate(-8.0F" project/src/main/java/com/arlight/tetris/portraitfix/RankPanelRenderer.java
+          grep -q "FALLBACK_SKIN_CACHE_NANOS = 1_000_000_000L" project/src/main/java/com/arlight/tetris/portraitfix/RankPanelRenderer.java
+          grep -q "setNoMinimapMessageReceived" project/src/main/java/com/arlight/tetris/client/XaeroMinimapSuppressor.java
+          grep -q "getMinimapProcessor" project/src/main/java/com/arlight/tetris/client/XaeroMinimapSuppressor.java
+          grep -q "ClientTickEvent.Post" project/src/main/java/com/arlight/tetris/client/XaeroMinimapSuppressor.java
+          grep -q "TetrisGameMode.CHAOS, 8" project/src/main/java/com/arlight/tetris/network/NetworkSender.java
+          ! grep -R "Items.PLAYER_HEAD\|DataComponents.PROFILE\|new ResolvableProfile" project/src/main/java
+
+      - name: Compile ArlightTetris 0.10.0
+        working-directory: project
+        run: gradle --no-daemon clean build
+
+      - name: Validate JAR
+        run: |
+          JAR=$(find project/build/libs -maxdepth 1 -type f -name '*.jar' ! -name '*sources*' ! -name '*dev*' | head -n 1)
+          test -n "$JAR"
+          unzip -p "$JAR" META-INF/neoforge.mods.toml | grep -q 'version = "0.10.0"'
+          jar tf "$JAR" | grep -q 'com/arlight/tetris/portraitfix/RankPanelRenderer.class'
+          jar tf "$JAR" | grep -q 'com/arlight/tetris/client/XaeroMinimapSuppressor.class'
+          javap -classpath "$JAR" -p com.arlight.tetris.portraitfix.RankPanelRenderer | grep -q 'drawPodiumCharacter'
+          javap -classpath "$JAR" -p com.arlight.tetris.client.XaeroMinimapSuppressor | grep -q 'onClientTickPost'
+          javap -classpath "$JAR" -p com.arlight.tetris.client.XaeroMinimapSuppressor | grep -q 'syncXaeroSuppression'
+          ! jar tf "$JAR" | grep -q 'SkinImageRenderer.class'
+          ! jar tf "$JAR" | grep -q 'ArlightTetrisPortraitFix.class'
+
+      - name: Prepare delivery
+        run: |
+          mkdir -p delivery
+          JAR=$(find project/build/libs -maxdepth 1 -type f -name '*.jar' ! -name '*sources*' ! -name '*dev*' | head -n 1)
+          cp "$JAR" delivery/ArlightTetris-0.10.0-PHASE4-XAERO-POSITIONFIX.jar
+          cp source.zip delivery/ArlightTetris-0.10.0-PHASE4-XAERO-POSITIONFIX-SOURCE.zip
+          cat > delivery/INSTALACION-XAERO-POSITIONFIX.txt <<'TXT'
+          1. Apaga completamente el servidor y todos los clientes de Minecraft.
+          2. Elimina la versión anterior de ArlightTetris en servidor y clientes.
+          3. Instala ArlightTetris-0.10.0-PHASE4-XAERO-POSITIONFIX.jar en servidor y clientes.
+          4. Conserva ArlightCore 1.25.3 y Xaero's Minimap en los clientes.
+          5. Inicia todo de nuevo. No es necesario reconstruir la arena.
+          6. /tetris arena refresh solo es necesario si el panel no actualiza sus datos.
+          TXT
+          sha256sum delivery/ArlightTetris-0.10.0-PHASE4-XAERO-POSITIONFIX.jar > delivery/SHA256.txt
+
+      - name: Upload delivery
+        uses: actions/upload-artifact@v4
+        with:
+          name: ArlightTetris-0.10.0-PHASE4-XAERO-POSITIONFIX
+          path: delivery/*
+          if-no-files-found: error
+          retention-days: 30
