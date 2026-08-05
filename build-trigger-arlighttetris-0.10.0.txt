@@ -1,0 +1,3 @@
+ArlightTetris 0.10.0 PHASE4 PODIOS VIVOS
+Portrait scale and feet-position correction.
+Source Drive file: 1RosCaQibqH6xPVrzolf2TX4q27-54jOd
