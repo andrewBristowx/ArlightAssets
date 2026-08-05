@@ -28,7 +28,7 @@ jobs:
           python -m pip install --disable-pip-version-check -q gdown
           gdown 1F3Eo1fUZiDYGxJHhto_LNSfp6MVikirs -O tetris-source.zip
           gdown 1QcmMK8hkE3sexw5kKLdKW0Pe56seEAPd -O core-source.zip
-          echo "bc59febbdedf07624bc7733517861a21744d0b31e14f81aa85c1a257ff0b39e2  tetris-source.zip" | sha256sum -c -
+          echo "848e280fbd4134898f70b156b027702e44c55fbce86c4aae4b032da3b471fce3  tetris-source.zip" | sha256sum -c -
           echo "923811cbf2b5c1f18182bbe9e49d300ccc9c9d06b40ef1a9645ebd95c91a051d  core-source.zip" | sha256sum -c -
           mkdir tetris core
           unzip -q tetris-source.zip -d tetris
@@ -40,6 +40,7 @@ jobs:
           grep -q 'versioned("10")' tetris/src/main/java/com/arlight/tetris/network/NetworkSetup.java
           grep -q 'record ModeJoinTarget' tetris/src/main/java/com/arlight/tetris/world/TetrisArena.java
           grep -q 'for (int slot = 0; slot < MatchConfig.MAX_PLAYERS; slot++)' tetris/src/main/java/com/arlight/tetris/world/TetrisArenaBuilder.java
+          grep -q 'findCompatibleMethod' tetris/src/main/java/com/arlight/tetris/integration/ArlightCoreIntegration.java
           grep -q 'configureGeneratedLobby(String worldName' core/src/main/java/com/arlight/core/tetris/TetrisLobbyManager.java
           grep -q '<version>1.25.1</version>' core/pom.xml
 
