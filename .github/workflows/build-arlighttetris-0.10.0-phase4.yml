@@ -1,4 +1,4 @@
-name: Build ArlightTetris 0.10.0 Phase 4
+name: Build ArlightTetris 0.10.0 Portrait Fix
 
 on:
   pull_request:
@@ -23,17 +23,20 @@ jobs:
         with:
           gradle-version: '8.14'
 
-      - name: Download phase 4 source
+      - name: Download patched phase 4 source
         run: |
           python -m pip install --disable-pip-version-check -q gdown
           gdown 1zd9Y6EmgyK_fgfAHbmV_Bvs5QyIeh_m0 -O source.zip
-          echo "a7beef9e89391469ff93b102805bdd9a839eda8b7200bda7b7b5e87444e4ce80  source.zip" | sha256sum -c -
+          echo "a2bde1e3c20723c89958bb93c973bae9f5fee673d44513dcb409cd4bd5eb282d  source.zip" | sha256sum -c -
           mkdir project
           unzip -q source.zip -d project
 
       - name: Source audit
         run: |
           grep -q "version = '0.10.0'" project/build.gradle
+          grep -q "NORTH_PANEL_BASE_SCALE = 0.78F" project/src/main/java/com/arlight/tetris/portraitfix/RankPanelRenderer.java
+          grep -q "SOUTH_PANEL_BASE_SCALE = 0.84F" project/src/main/java/com/arlight/tetris/portraitfix/RankPanelRenderer.java
+          grep -q "NORTH_PANEL_FEET_DROP_PX = 2.2F" project/src/main/java/com/arlight/tetris/portraitfix/RankPanelRenderer.java
           grep -q "drawPodiumCharacter" project/src/main/java/com/arlight/tetris/portraitfix/RankPanelRenderer.java
           grep -q "poseForRank" project/src/main/java/com/arlight/tetris/portraitfix/RankPanelRenderer.java
           grep -q "PUESTOS 4–8" project/src/main/java/com/arlight/tetris/portraitfix/RankPanelRenderer.java
@@ -59,22 +62,22 @@ jobs:
         run: |
           mkdir -p delivery
           JAR=$(find project/build/libs -maxdepth 1 -type f -name '*.jar' ! -name '*sources*' ! -name '*dev*' | head -n 1)
-          cp "$JAR" delivery/ArlightTetris-0.10.0-PHASE4-PODIOS-VIVOS.jar
-          cp source.zip delivery/ArlightTetris-0.10.0-PHASE4-PODIOS-VIVOS-SOURCE.zip
-          cat > delivery/INSTALACION-0.10.0.txt <<'TXT'
+          cp "$JAR" delivery/ArlightTetris-0.10.0-PHASE4-PODIOS-VIVOS-PORTRAITFIX.jar
+          cp source.zip delivery/ArlightTetris-0.10.0-PHASE4-PODIOS-VIVOS-PORTRAITFIX-SOURCE.zip
+          cat > delivery/INSTALACION-0.10.0-PORTRAITFIX.txt <<'TXT'
           1. Apaga completamente el servidor y Minecraft.
-          2. Elimina ArlightTetris 0.9.5 del servidor y de todos los clientes.
-          3. Instala ArlightTetris-0.10.0-PHASE4-PODIOS-VIVOS.jar en servidor y clientes.
+          2. Elimina la versión anterior de ArlightTetris del servidor y de todos los clientes.
+          3. Instala ArlightTetris-0.10.0-PHASE4-PODIOS-VIVOS-PORTRAITFIX.jar en servidor y clientes.
           4. Conserva ArlightCore 1.25.3; no necesita reemplazo.
           5. Inicia el servidor y ejecuta /tetris arena refresh dentro de tetris_arena.
-          6. No reconstruyas la arena: la fase 4 cambia únicamente render y rankings.
+          6. No reconstruyas la arena: este hotfix cambia únicamente tamaño, posición y poses de los personajes de los podios.
           TXT
-          sha256sum delivery/ArlightTetris-0.10.0-PHASE4-PODIOS-VIVOS.jar > delivery/SHA256.txt
+          sha256sum delivery/ArlightTetris-0.10.0-PHASE4-PODIOS-VIVOS-PORTRAITFIX.jar > delivery/SHA256.txt
 
       - name: Upload delivery
         uses: actions/upload-artifact@v4
         with:
-          name: ArlightTetris-0.10.0-PHASE4-PODIOS-VIVOS
+          name: ArlightTetris-0.10.0-PHASE4-PODIOS-VIVOS-PORTRAITFIX
           path: delivery/*
           if-no-files-found: error
           retention-days: 30
