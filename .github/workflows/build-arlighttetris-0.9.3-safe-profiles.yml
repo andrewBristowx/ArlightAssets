@@ -1,0 +1,80 @@
+name: Build ArlightTetris 0.9.3 Safe Profiles
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle 8.14
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.14'
+
+      - name: Download corrected source
+        run: |
+          python -m pip install --disable-pip-version-check -q gdown
+          gdown 1Nknvlpet5DRG-fnEk3s0Phryb0WhwzYD -O source.zip
+          echo "48e0244f0ffbd98b7c2b23baa4759edfd5a98dca34760947f23da6eeadf9ef39  source.zip" | sha256sum -c -
+          mkdir project
+          unzip -q source.zip -d project
+
+      - name: Source safety audit
+        run: |
+          test "$(grep -c '^\[\[mods\]\]' project/src/main/resources/META-INF/neoforge.mods.toml)" -eq 1
+          ! test -e project/src/main/java/com/arlight/tetris/portraitfix/SkinImageRenderer.java
+          ! test -e project/src/main/java/com/arlight/tetris/portraitfix/ArlightTetrisPortraitFix.java
+          ! grep -R "new ResolvableProfile\|DataComponents.PROFILE\|Items.PLAYER_HEAD" project/src/main/java
+          grep -q "version = '0.9.3'" project/build.gradle
+
+      - name: Compile
+        working-directory: project
+        run: gradle --no-daemon clean build
+
+      - name: Validate compiled JAR
+        run: |
+          JAR=$(find project/build/libs -maxdepth 1 -type f -name '*.jar' ! -name '*sources*' ! -name '*dev*' | head -n 1)
+          test -n "$JAR"
+          jar tf "$JAR" | grep -q 'com/arlight/tetris/util/PlayerIdentity.class'
+          jar tf "$JAR" | grep -q 'com/arlight/tetris/portraitfix/RankPanelRenderer.class'
+          ! jar tf "$JAR" | grep -q 'SkinImageRenderer.class'
+          ! jar tf "$JAR" | grep -q 'ArlightTetrisPortraitFix.class'
+          unzip -p "$JAR" META-INF/neoforge.mods.toml | grep -q 'version = "0.9.3"'
+          unzip -p "$JAR" META-INF/neoforge.mods.toml | grep -q 'modId = "arlighttetris"'
+          test "$(unzip -p "$JAR" META-INF/neoforge.mods.toml | grep -c '^\[\[mods\]\]')" -eq 1
+
+      - name: Prepare delivery
+        run: |
+          mkdir -p delivery
+          JAR=$(find project/build/libs -maxdepth 1 -type f -name '*.jar' ! -name '*sources*' ! -name '*dev*' | head -n 1)
+          cp "$JAR" delivery/ArlightTetris-0.9.3-SAFE-PROFILES.jar
+          cp source.zip delivery/ArlightTetris-0.9.3-SAFE-PROFILES-SOURCE.zip
+          cat > delivery/INSTALACION-0.9.3.txt <<'TXT'
+          1. Apaga completamente el servidor y Minecraft.
+          2. Elimina ArlightTetris 0.9.2 del servidor y de todos los clientes.
+          3. Instala ArlightTetris-0.9.3-SAFE-PROFILES.jar en servidor y clientes.
+          4. Conserva ArlightCore 1.25.0; no necesita reemplazo para este hotfix.
+          5. Inicia el servidor y ejecuta /tetris arena refresh una vez.
+          6. La primera actualización elimina anclas y pinturas antiguas con perfiles completos.
+          TXT
+          sha256sum delivery/ArlightTetris-0.9.3-SAFE-PROFILES.jar > delivery/SHA256.txt
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ArlightTetris-0.9.3-SAFE-PROFILES
+          path: delivery/*
+          if-no-files-found: error
+          retention-days: 30
