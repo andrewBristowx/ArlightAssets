@@ -1,0 +1,11 @@
+name: Inspect Xaero Minimap 1.21.1
+
+on:
+  workflow_dispatch:
+
+jobs:
+  inspect:
+    if: false
+    runs-on: ubuntu-24.04
+    steps:
+      - run: echo "Inspección completada"
