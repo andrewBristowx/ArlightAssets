@@ -47,7 +47,7 @@ jobs:
           jar tf "$JAR" | grep -q 'com/arlight/core/listeners/CoreItemListener.class'
           jar tf "$JAR" | grep -q 'com/arlight/core/items/CoreItems.class'
           javap -classpath "$JAR" -c com.arlight.core.items.CoreItems | grep -q 'isGeneralLobbyWorld'
-          javap -classpath "$JAR" -c com.arlight.core.listeners.CoreItemListener | grep -q 'isPendingRestore'
+          javap -classpath "$JAR" -p -c com.arlight.core.listeners.CoreItemListener | grep -q 'isPendingRestore'
 
       - name: Prepare delivery
         run: |
