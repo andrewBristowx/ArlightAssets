@@ -1,0 +1,111 @@
+name: Build Arlight Phase 3 Auto Lobby
+
+on:
+  push:
+    branches:
+      - build/arlight-phase3-auto-lobby
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle 8.14
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.14'
+
+      - name: Download source inputs
+        run: |
+          python -m pip install --disable-pip-version-check -q gdown
+          gdown 1yPqBSvLc5AzUlCK-sOyEvTZi5LCE4oGj -O tetris-source.zip
+          gdown 11XPh1MftSZXLRgxe_XcoWY4jvmwc590g -O core-source.zip
+          echo "907a540949b2e85cdc2de32c50909efe94bdff359d1fb472a8d95fbe193d521e  tetris-source.zip" | sha256sum -c -
+          echo "8ac65104b51359ea979cb2d6b96cc7cf4d2182d7abd23f7a8e6ea14cda7a6c36  core-source.zip" | sha256sum -c -
+          mkdir tetris core
+          unzip -q tetris-source.zip -d tetris
+          unzip -q core-source.zip -d core
+
+      - name: Compile ArlightTetris 0.9.2
+        working-directory: tetris
+        run: gradle --no-daemon clean build
+
+      - name: Compile ArlightCore 1.25.0
+        working-directory: core
+        run: mvn -B -DskipTests clean package
+
+      - name: Validate outputs
+        run: |
+          TETRIS_JAR=$(find tetris/build/libs -maxdepth 1 -type f -name '*.jar' ! -name '*sources*' ! -name '*dev*' | head -n 1)
+          CORE_JAR=$(find core/target -maxdepth 1 -type f -name 'ArlightCore-1.25.0.jar' | head -n 1)
+          test -n "$TETRIS_JAR"
+          test -n "$CORE_JAR"
+          jar tf "$TETRIS_JAR" | grep -q 'com/arlight/tetris/world/TetrisArenaBuilder.class'
+          jar tf "$TETRIS_JAR" | grep -q 'assets/arlighttetris/textures/painting/mode_top.png'
+          jar tf "$TETRIS_JAR" | grep -q 'com/arlight/tetris/portraitfix/RankPanelRenderer.class'
+          jar tf "$TETRIS_JAR" | grep -q 'com/arlight/tetris/network/ClientboundArenaSidebarPacket.class'
+          jar tf "$CORE_JAR" | grep -q 'com/arlight/core/tetris/TetrisLobbyManager.class'
+          jar tf "$CORE_JAR" | grep -q 'com/arlight/core/tetris/TetrisModeGUI.class'
+
+      - name: Prepare delivery
+        run: |
+          mkdir -p delivery
+          TETRIS_JAR=$(find tetris/build/libs -maxdepth 1 -type f -name '*.jar' ! -name '*sources*' ! -name '*dev*' | head -n 1)
+          CORE_JAR=$(find core/target -maxdepth 1 -type f -name 'ArlightCore-1.25.0.jar' | head -n 1)
+          cp "$TETRIS_JAR" delivery/ArlightTetris-0.9.2-PHASE3-AUTO-LOBBY.jar
+          cp "$CORE_JAR" delivery/ArlightCore-1.25.0-AUTO-TETRIS-LOBBY.jar
+          cp tetris-source.zip delivery/ArlightTetris-0.9.2-PHASE3-AUTO-LOBBY-SOURCE.zip
+          cp core-source.zip delivery/ArlightCore-1.25.0-AUTO-TETRIS-LOBBY-SOURCE.zip
+          cat > delivery/INSTALACION-0.9.2-1.25.0.txt <<'TXT'
+          INSTALACION ARLIGHTTETRIS 0.9.2 + ARLIGHTCORE 1.25.0
+
+          1. Haz una copia de seguridad del mundo de Tetris.
+          2. Apaga completamente el servidor y todos los clientes.
+          3. Sustituye ArlightTetris 0.9.1 por 0.9.2 en servidor y clientes.
+          4. Sustituye ArlightCore 1.24.0 por 1.25.0 en plugins.
+          5. Inicia el servidor.
+
+          PARA ACTUALIZAR LA ARENA EXISTENTE:
+          /tetris arena upgrade phase3
+
+          PARA GENERAR TODO DESDE CERO EN UN MUNDO VACIO:
+          /tetris arena setcenter
+          /tetris arena build
+
+          Ejecuta el comando dentro del juego con una cuenta administradora.
+          El mod sincroniza automáticamente con ArlightCore el spawn y las cinco estaciones.
+
+          SI CORE TODAVIA NO ESTABA LISTO AL GENERAR:
+          /tetris arena refresh
+
+          No hace falta ejecutar /core settetrislobby ni registrar las estaciones una por una.
+
+          IMPORTANTE: upgrade phase3 modifica la ampliacion norte alrededor del centro guardado,
+          aproximadamente X +/-64 y Z desde -80 hasta -38 respecto al centro.
+          TXT
+          sha256sum delivery/*.jar > delivery/SHA256.txt
+          cd delivery
+          zip -q Arlight-Phase3-Auto-Lobby-DELIVERY.zip \
+            ArlightTetris-0.9.2-PHASE3-AUTO-LOBBY.jar \
+            ArlightCore-1.25.0-AUTO-TETRIS-LOBBY.jar \
+            INSTALACION-0.9.2-1.25.0.txt SHA256.txt
+
+      - name: Upload compiled delivery
+        uses: actions/upload-artifact@v4
+        with:
+          name: Arlight-Phase3-Auto-Lobby
+          path: delivery/*
+          if-no-files-found: error
+          retention-days: 30
