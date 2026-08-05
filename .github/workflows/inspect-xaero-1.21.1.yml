@@ -1,33 +1,11 @@
 name: Inspect Xaero Minimap 1.21.1
 
 on:
-  pull_request:
-    branches: [main]
   workflow_dispatch:
 
 jobs:
   inspect:
+    if: false
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: '21'
-      - name: Download official Xaero jar
-        run: |
-          curl -L --fail --retry 4 -o xaero.jar 'https://cdn.modrinth.com/data/1bokaNcj/versions/CatMvRfN/xaerominimap-neoforge-1.21.1-25.3.10.jar'
-          unzip -t xaero.jar >/dev/null
-      - name: Inspect minimap active logic
-        shell: bash
-        run: |
-          echo '===== MINIMAP PROCESSOR API ====='
-          javap -classpath xaero.jar -p xaero.common.minimap.MinimapProcessor | grep -i -C 8 'noMinimap' || true
-          echo '===== XAERO SESSION API ====='
-          javap -classpath xaero.jar -p xaero.common.XaeroMinimapSession || true
-          echo '===== MINIMAP SESSION ACTIVE LOGIC ====='
-          javap -classpath xaero.jar -p -c xaero.hud.minimap.module.MinimapSession > minimapsession.txt
-          grep -n -C 60 'isActive\|getNoMinimapMessageReceived\|noMinimap' minimapsession.txt | head -n 1200 || true
-          echo '===== ALL DIRECT USERS OF GETTER STRING ====='
-          rm -rf classes && mkdir classes && cd classes && jar xf ../xaero.jar
-          grep -aRIl 'getNoMinimapMessageReceived' . | head -n 100 || true
+      - run: echo "Inspección completada"
