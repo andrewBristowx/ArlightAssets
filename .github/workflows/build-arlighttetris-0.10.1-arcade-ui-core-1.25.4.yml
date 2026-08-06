@@ -52,7 +52,7 @@ jobs:
           grep -q 'drawSpectatorExperience' tetris/src/main/java/com/arlight/tetris/client/TetrisOverlay.java
           grep -q 'getPpsHundredths' tetris/src/main/java/com/arlight/tetris/game/GameSession.java
           grep -q 'rankName' tetris/src/main/java/com/arlight/tetris/stats/TetrisPlayerStats.java
-          grep -q 'onLobbyReset' tetris/src/main/java/com/arlight/tetris/server/ArenaMatchListener.java
+          grep -q 'onLobbyReset' tetris/src/main/java/com/arlight/tetris/world/ArenaMatchListener.java
           test -f tetris/src/main/resources/assets/arlighttetris/textures/item/tetris_core.png
           grep -q '<version>1.25.4</version>' core/pom.xml
           grep -q "version: '1.25.4'" core/src/main/resources/plugin.yml
