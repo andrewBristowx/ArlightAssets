@@ -1,4 +1,4 @@
-name: Build ArlightTetris 0.11.1 Profile HUD Fix + Core 1.25.4
+name: Build ArlightTetris 0.11.2 Overlay All Menus + Core 1.25.4
 
 on:
   pull_request:
@@ -31,7 +31,7 @@ jobs:
           python -m pip install --disable-pip-version-check -q gdown
           gdown 1zd9Y6EmgyK_fgfAHbmV_Bvs5QyIeh_m0 -O tetris-source.zip
           gdown 1u3DCN0zxqQBAHDBWW6ISrqsBr4ufAKWD -O core-source.zip
-          echo "392f8045ceb45bcc2d68f31760c01b5d1c142abe70977d50e28efbbbe7ede6a4  tetris-source.zip" | sha256sum -c -
+          echo "ee8c2fa720fd037cb2e746cce780ad5908db0ea39b3131eaade224ccffe7dfa2  tetris-source.zip" | sha256sum -c -
           echo "134279e2daa9ae94927b3c47b0e23fa16deee2ae1d8da4a5845c0a9dc9e8d16a  core-source.zip" | sha256sum -c -
           mkdir tetris core
           unzip -q tetris-source.zip -d tetris
@@ -40,23 +40,17 @@ jobs:
       - name: Source audit
         shell: bash
         run: |
-          grep -q "version = '0.11.1'" tetris/build.gradle
+          grep -q "version = '0.11.2'" tetris/build.gradle
           grep -q 'versioned("12")' tetris/src/main/java/com/arlight/tetris/network/NetworkSetup.java
-          grep -q 'ClientPacketBridge::handleBoardState' tetris/src/main/java/com/arlight/tetris/network/NetworkSetup.java
-          grep -q 'ClientPacketBridge::handleSpectatorState' tetris/src/main/java/com/arlight/tetris/network/NetworkSetup.java
           ! grep -q 'ClientPacketHandler::' tetris/src/main/java/com/arlight/tetris/network/NetworkSetup.java
-          test -f tetris/src/main/java/com/arlight/tetris/network/ClientboundSpectatorStatePacket.java
-          test -f tetris/src/main/java/com/arlight/tetris/client/TetrisProfileOverlayInput.java
-          grep -q 'ScreenEvent.Opening' tetris/src/main/java/com/arlight/tetris/client/TetrisProfileOverlayInput.java
-          grep -q 'toggleProfileOverlay' tetris/src/main/java/com/arlight/tetris/network/ClientPacketHandler.java
-          grep -q 'drawProfileOverlay' tetris/src/main/java/com/arlight/tetris/client/TetrisOverlay.java
-          grep -q 'topVersus' tetris/src/main/java/com/arlight/tetris/client/TetrisOverlay.java
-          grep -q 'el movimiento sigue activo' tetris/src/main/java/com/arlight/tetris/client/TetrisOverlay.java
-          grep -q 'spectatorNext' tetris/src/main/java/com/arlight/tetris/client/ClientGameState.java
-          grep -q 'getPpsHundredths' tetris/src/main/java/com/arlight/tetris/game/GameSession.java
-          grep -q 'rankName' tetris/src/main/java/com/arlight/tetris/stats/TetrisPlayerStats.java
-          grep -q 'onLobbyReset' tetris/src/main/java/com/arlight/tetris/world/ArenaMatchListener.java
-          test -f tetris/src/main/resources/assets/arlighttetris/textures/item/tetris_core.png
+          grep -q 'openArcadeOverlay' tetris/src/main/java/com/arlight/tetris/network/ClientPacketHandler.java
+          grep -q 'isAnyArcadeOverlayOpen' tetris/src/main/java/com/arlight/tetris/client/ClientGameState.java
+          grep -q 'drawPrincipalOverlay' tetris/src/main/java/com/arlight/tetris/client/TetrisOverlay.java
+          grep -q 'drawModesOverlay' tetris/src/main/java/com/arlight/tetris/client/TetrisOverlay.java
+          grep -q 'drawHelpOverlay' tetris/src/main/java/com/arlight/tetris/client/TetrisOverlay.java
+          grep -q 'drawSettingsOverlay' tetris/src/main/java/com/arlight/tetris/client/TetrisOverlay.java
+          grep -q 'handleArcadeOverlayInput' tetris/src/main/java/com/arlight/tetris/client/TetrisClientTickHandler.java
+          grep -q 'closeAllArcadeOverlays' tetris/src/main/java/com/arlight/tetris/client/TetrisProfileOverlayInput.java
           grep -q '<version>1.25.4</version>' core/pom.xml
           grep -q "version: '1.25.4'" core/src/main/resources/plugin.yml
 
@@ -64,7 +58,7 @@ jobs:
         working-directory: core
         run: mvn -B -DskipTests clean package
 
-      - name: Compile ArlightTetris 0.11.1
+      - name: Compile ArlightTetris 0.11.2
         working-directory: tetris
         run: gradle --no-daemon clean build
 
@@ -76,17 +70,16 @@ jobs:
           test -n "$CORE_JAR"
           test -n "$TETRIS_JAR"
           unzip -p "$CORE_JAR" plugin.yml | grep -q "version: '1.25.4'"
-          unzip -p "$TETRIS_JAR" META-INF/neoforge.mods.toml | grep -q 'version = "0.11.1"'
-          jar tf "$TETRIS_JAR" | grep -q 'com/arlight/tetris/network/ClientPacketBridge.class'
-          jar tf "$TETRIS_JAR" | grep -q 'com/arlight/tetris/network/ClientboundSpectatorStatePacket.class'
-          jar tf "$TETRIS_JAR" | grep -q 'com/arlight/tetris/client/TetrisProfileOverlayInput.class'
+          unzip -p "$TETRIS_JAR" META-INF/neoforge.mods.toml | grep -q 'version = "0.11.2"'
           jar tf "$TETRIS_JAR" | grep -q 'com/arlight/tetris/client/TetrisOverlay.class'
-          javap -classpath "$TETRIS_JAR" -p -verbose com.arlight.tetris.network.NetworkSetup > networksetup.txt
-          grep -q 'ClientPacketBridge' networksetup.txt
-          ! grep -q 'ClientPacketHandler' networksetup.txt
+          jar tf "$TETRIS_JAR" | grep -q 'com/arlight/tetris/client/TetrisClientTickHandler.class'
+          jar tf "$TETRIS_JAR" | grep -q 'com/arlight/tetris/client/TetrisProfileOverlayInput.class'
           javap -classpath "$TETRIS_JAR" -p -c com.arlight.tetris.network.ClientPacketHandler > clienthandler.txt
-          grep -q 'toggleProfileOverlay' clienthandler.txt
-          jar tf "$TETRIS_JAR" | grep -q 'assets/arlighttetris/textures/item/tetris_core.png'
+          grep -q 'openArcadeOverlay' clienthandler.txt
+          javap -classpath "$TETRIS_JAR" -p -c com.arlight.tetris.client.TetrisOverlay > overlay.txt
+          grep -q 'drawModesOverlay' overlay.txt
+          grep -q 'drawHelpOverlay' overlay.txt
+          grep -q 'drawSettingsOverlay' overlay.txt
 
       - name: Prepare coordinated delivery
         shell: bash
@@ -95,22 +88,22 @@ jobs:
           CORE_JAR=$(find core/target -maxdepth 1 -type f -name 'ArlightCore-1.25.4.jar' | head -n 1)
           TETRIS_JAR=$(find tetris/build/libs -maxdepth 1 -type f -name '*.jar' ! -name '*sources*' ! -name '*dev*' ! -name '*javadoc*' | head -n 1)
           cp "$CORE_JAR" delivery/ArlightCore-1.25.4-TETRIS-ARCADE-ITEMS.jar
-          cp "$TETRIS_JAR" delivery/ArlightTetris-0.11.1-PROFILE-HUD-FIX.jar
+          cp "$TETRIS_JAR" delivery/ArlightTetris-0.11.2-OVERLAY-ALL-MENUS.jar
           cp core-source.zip delivery/ArlightCore-1.25.4-TETRIS-ARCADE-ITEMS-SOURCE.zip
-          cp tetris-source.zip delivery/ArlightTetris-0.11.1-PROFILE-HUD-FIX-SOURCE.zip
-          cp tetris/CAMBIOS_0.11.1.txt delivery/CAMBIOS_0.11.1.txt
-          cat > delivery/INSTALACION-0.11.1.txt <<'TXT'
-          ARLIGHTTETRIS 0.11.1 + ARLIGHTCORE 1.25.4
+          cp tetris-source.zip delivery/ArlightTetris-0.11.2-OVERLAY-ALL-MENUS-SOURCE.zip
+          cp tetris/CAMBIOS_0.11.2.txt delivery/CAMBIOS_0.11.2.txt
+          cat > delivery/INSTALACION-0.11.2.txt <<'TXT'
+          ARLIGHTTETRIS 0.11.2 + ARLIGHTCORE 1.25.4
 
           1. Apaga completamente el servidor y cierra Minecraft en todos los clientes.
-          2. Conserva ArlightCore 1.25.4; no necesita otra actualización.
-          3. En mods/ del servidor y de todos los clientes elimina ArlightTetris 0.11.0.
-          4. Instala ArlightTetris-0.11.1-PROFILE-HUD-FIX.jar.
-          5. Todos los clientes deben usar exactamente 0.11.1.
-          6. No dejes dos versiones de ArlightTetris al mismo tiempo.
-          7. Inicia primero el servidor y después los clientes.
-          8. Usa la Tarjeta de Jugador y confirma que el mundo permanece visible.
-          9. Esc o volver a usar la tarjeta debe cerrar el HUD sin bloquear el movimiento.
+          2. Conserva ArlightCore 1.25.4.
+          3. Elimina ArlightTetris 0.11.1 del servidor y de todos los clientes.
+          4. Instala ArlightTetris-0.11.2-OVERLAY-ALL-MENUS.jar.
+          5. No dejes dos versiones de ArlightTetris en mods/.
+          6. Inicia primero el servidor y después los clientes.
+          7. Prueba Núcleo Tetris, Selector de Modos, Tarjeta de Jugador, Cartucho de Ayuda y Configuración.
+          8. Todos deben mostrarse como HUD sobre la arena, sin activar el fondo global del modpack.
+          9. Esc cierra el overlay sin abrir pausa.
           10. No hace falta reconstruir la arena ni ejecutar /tetris arena refresh.
           TXT
           sha256sum delivery/*.jar > delivery/SHA256.txt
@@ -118,7 +111,7 @@ jobs:
       - name: Upload delivery
         uses: actions/upload-artifact@v4
         with:
-          name: ArlightTetris-0.11.1-PROFILE-HUD-FIX-Core-1.25.4
+          name: ArlightTetris-0.11.2-OVERLAY-ALL-MENUS-Core-1.25.4
           path: delivery/*
           if-no-files-found: error
           retention-days: 30
