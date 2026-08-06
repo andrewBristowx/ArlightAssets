@@ -29,8 +29,8 @@ jobs:
         shell: bash
         run: |
           python -m pip install --disable-pip-version-check -q gdown
-          gdown 1ANso3Vuw0eWQ4Pqgo6ks4XaL0U_gaA2a -O tetris-source.zip
-          gdown 1eR-Rqt3FEQGVWPfta9UIlol7tL5Hr_Pm -O core-source.zip
+          gdown 1zd9Y6EmgyK_fgfAHbmV_Bvs5QyIeh_m0 -O tetris-source.zip
+          gdown 1u3DCN0zxqQBAHDBWW6ISrqsBr4ufAKWD -O core-source.zip
           echo "39d4c1250a1c13ff0d330da73fbf3b7fcba0484431e18aeed7a69b4b775fdb60  tetris-source.zip" | sha256sum -c -
           echo "134279e2daa9ae94927b3c47b0e23fa16deee2ae1d8da4a5845c0a9dc9e8d16a  core-source.zip" | sha256sum -c -
           mkdir tetris core
