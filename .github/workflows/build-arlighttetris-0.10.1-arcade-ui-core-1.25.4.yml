@@ -31,7 +31,7 @@ jobs:
           python -m pip install --disable-pip-version-check -q gdown
           gdown 1zd9Y6EmgyK_fgfAHbmV_Bvs5QyIeh_m0 -O tetris-source.zip
           gdown 1u3DCN0zxqQBAHDBWW6ISrqsBr4ufAKWD -O core-source.zip
-          echo "1c1fdf87a14b18907316ee0a016778648407f9fa71943ce7b75f0bf370c1b072  tetris-source.zip" | sha256sum -c -
+          echo "804ae26892e9477b7665341be04ac649f8c9735065d52c26e9bb78392f93ea6e  tetris-source.zip" | sha256sum -c -
           echo "134279e2daa9ae94927b3c47b0e23fa16deee2ae1d8da4a5845c0a9dc9e8d16a  core-source.zip" | sha256sum -c -
           mkdir tetris core
           unzip -q tetris-source.zip -d tetris
@@ -47,6 +47,7 @@ jobs:
           ! grep -q 'ClientPacketHandler::' tetris/src/main/java/com/arlight/tetris/network/NetworkSetup.java
           grep -q 'class ClientPacketBridge' tetris/src/main/java/com/arlight/tetris/network/ClientPacketBridge.java
           grep -q 'ClientPacketBridge.install' tetris/src/main/java/com/arlight/tetris/client/ClientSetup.java
+          grep -q 'import com.arlight.tetris.network.ClientPacketHandler;' tetris/src/main/java/com/arlight/tetris/client/ClientSetup.java
           grep -q 'value = Dist.CLIENT' tetris/src/main/java/com/arlight/tetris/client/ClientSetup.java
           grep -q 'class TetrisArcadeScreen' tetris/src/main/java/com/arlight/tetris/client/TetrisArcadeScreen.java
           test -f tetris/src/main/resources/assets/arlighttetris/textures/item/tetris_core.png
