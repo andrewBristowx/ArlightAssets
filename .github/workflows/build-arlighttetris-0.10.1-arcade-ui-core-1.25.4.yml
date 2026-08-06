@@ -1,4 +1,4 @@
-name: Build ArlightTetris 0.10.1 Arcade UI + Core 1.25.4
+name: Build ArlightTetris 0.10.2 Server Dist Fix + Core 1.25.4
 
 on:
   pull_request:
@@ -31,7 +31,7 @@ jobs:
           python -m pip install --disable-pip-version-check -q gdown
           gdown 1zd9Y6EmgyK_fgfAHbmV_Bvs5QyIeh_m0 -O tetris-source.zip
           gdown 1u3DCN0zxqQBAHDBWW6ISrqsBr4ufAKWD -O core-source.zip
-          echo "39d4c1250a1c13ff0d330da73fbf3b7fcba0484431e18aeed7a69b4b775fdb60  tetris-source.zip" | sha256sum -c -
+          echo "1c1fdf87a14b18907316ee0a016778648407f9fa71943ce7b75f0bf370c1b072  tetris-source.zip" | sha256sum -c -
           echo "134279e2daa9ae94927b3c47b0e23fa16deee2ae1d8da4a5845c0a9dc9e8d16a  core-source.zip" | sha256sum -c -
           mkdir tetris core
           unzip -q tetris-source.zip -d tetris
@@ -40,25 +40,27 @@ jobs:
       - name: Source audit
         shell: bash
         run: |
-          grep -q "version = '0.10.1'" tetris/build.gradle
+          grep -q "version = '0.10.2'" tetris/build.gradle
           grep -q 'versioned("11")' tetris/src/main/java/com/arlight/tetris/network/NetworkSetup.java
+          grep -q 'ClientPacketBridge::handleBoardState' tetris/src/main/java/com/arlight/tetris/network/NetworkSetup.java
+          grep -q 'ClientPacketBridge::handleOpenArcadeMenu' tetris/src/main/java/com/arlight/tetris/network/NetworkSetup.java
+          ! grep -q 'ClientPacketHandler::' tetris/src/main/java/com/arlight/tetris/network/NetworkSetup.java
+          grep -q 'class ClientPacketBridge' tetris/src/main/java/com/arlight/tetris/network/ClientPacketBridge.java
+          grep -q 'ClientPacketBridge.install' tetris/src/main/java/com/arlight/tetris/client/ClientSetup.java
+          grep -q 'value = Dist.CLIENT' tetris/src/main/java/com/arlight/tetris/client/ClientSetup.java
           grep -q 'class TetrisArcadeScreen' tetris/src/main/java/com/arlight/tetris/client/TetrisArcadeScreen.java
-          grep -q 'ClientboundOpenArcadeMenuPacket' tetris/src/main/java/com/arlight/tetris/network/NetworkSetup.java
           test -f tetris/src/main/resources/assets/arlighttetris/textures/item/tetris_core.png
           test -f tetris/src/main/resources/assets/minecraft/models/item/nether_star.json
           grep -q '<version>1.25.4</version>' core/pom.xml
           grep -q "version: '1.25.4'" core/src/main/resources/plugin.yml
           grep -q 'openLobbyMenu' core/src/main/java/com/arlight/core/api/MinigameProvider.java
           grep -q 'TETRIS_MODEL_MAIN = 7100' core/src/main/java/com/arlight/core/items/CoreItems.java
-          grep -q 'Material.HEART_OF_THE_SEA' core/src/main/java/com/arlight/core/items/CoreItems.java
-          ! grep -q 'new ItemStack(Material.WRITABLE_BOOK)' core/src/main/java/com/arlight/core/items/CoreItems.java
-          ! grep -q 'new ItemStack(Material.DARK_OAK_DOOR)' core/src/main/java/com/arlight/core/items/CoreItems.java
 
       - name: Compile ArlightCore 1.25.4
         working-directory: core
         run: mvn -B -DskipTests clean package
 
-      - name: Compile ArlightTetris 0.10.1
+      - name: Compile ArlightTetris 0.10.2
         working-directory: tetris
         run: gradle --no-daemon clean build
 
@@ -70,13 +72,15 @@ jobs:
           test -n "$CORE_JAR"
           test -n "$TETRIS_JAR"
           unzip -p "$CORE_JAR" plugin.yml | grep -q "version: '1.25.4'"
-          jar tf "$CORE_JAR" | grep -q 'com/arlight/core/items/CoreItems.class'
-          javap -classpath "$CORE_JAR" -p com.arlight.core.api.MinigameProvider | grep -q 'openLobbyMenu'
-          unzip -p "$TETRIS_JAR" META-INF/neoforge.mods.toml | grep -q 'version = "0.10.1"'
+          unzip -p "$TETRIS_JAR" META-INF/neoforge.mods.toml | grep -q 'version = "0.10.2"'
+          jar tf "$TETRIS_JAR" | grep -q 'com/arlight/tetris/network/ClientPacketBridge.class'
           jar tf "$TETRIS_JAR" | grep -q 'com/arlight/tetris/client/TetrisArcadeScreen.class'
           jar tf "$TETRIS_JAR" | grep -q 'com/arlight/tetris/network/ClientboundOpenArcadeMenuPacket.class'
+          javap -classpath "$TETRIS_JAR" -p -c com.arlight.tetris.network.NetworkSetup > networksetup.txt
+          grep -q 'ClientPacketBridge.handleBoardState' networksetup.txt
+          grep -q 'ClientPacketBridge.handleOpenArcadeMenu' networksetup.txt
+          ! grep -q 'ClientPacketHandler' networksetup.txt
           jar tf "$TETRIS_JAR" | grep -q 'assets/arlighttetris/textures/item/tetris_core.png'
-          jar tf "$TETRIS_JAR" | grep -q 'assets/minecraft/models/item/nether_star.json'
 
       - name: Prepare coordinated delivery
         shell: bash
@@ -85,28 +89,27 @@ jobs:
           CORE_JAR=$(find core/target -maxdepth 1 -type f -name 'ArlightCore-1.25.4.jar' | head -n 1)
           TETRIS_JAR=$(find tetris/build/libs -maxdepth 1 -type f -name '*.jar' ! -name '*sources*' ! -name '*dev*' ! -name '*javadoc*' | head -n 1)
           cp "$CORE_JAR" delivery/ArlightCore-1.25.4-TETRIS-ARCADE-ITEMS.jar
-          cp "$TETRIS_JAR" delivery/ArlightTetris-0.10.1-INTERFAZ-ARCADE.jar
+          cp "$TETRIS_JAR" delivery/ArlightTetris-0.10.2-INTERFAZ-ARCADE-SERVER-FIX.jar
           cp core-source.zip delivery/ArlightCore-1.25.4-TETRIS-ARCADE-ITEMS-SOURCE.zip
-          cp tetris-source.zip delivery/ArlightTetris-0.10.1-INTERFAZ-ARCADE-SOURCE.zip
-          cat > delivery/INSTALACION-INTERFAZ-ARCADE.txt <<'TXT'
-          ARLIGHTTETRIS 0.10.1 + ARLIGHTCORE 1.25.4
+          cp tetris-source.zip delivery/ArlightTetris-0.10.2-INTERFAZ-ARCADE-SERVER-FIX-SOURCE.zip
+          cat > delivery/INSTALACION-SERVER-DIST-FIX.txt <<'TXT'
+          ARLIGHTTETRIS 0.10.2 + ARLIGHTCORE 1.25.4
 
           1. Apaga completamente el servidor y cierra Minecraft en todos los clientes.
-          2. En plugins/, elimina ArlightCore 1.25.3 e instala ArlightCore-1.25.4-TETRIS-ARCADE-ITEMS.jar.
-          3. En mods/ del servidor y de todos los clientes, elimina ArlightTetris 0.10.0 e instala ArlightTetris-0.10.1-INTERFAZ-ARCADE.jar.
-          4. No dejes dos versiones de ArlightCore ni ArlightTetris al mismo tiempo.
-          5. Inicia el servidor y entra al lobby dedicado de Tetris.
-          6. Espera dos segundos: aparecerán Núcleo Tetris, Selector de Modos, Tarjeta de Jugador, Cartucho de Ayuda y Baliza de Retorno.
-          7. Usa /core items si Multiverse conservó temporalmente el perfil anterior.
-          8. Usa /tetris interfaz para probar directamente el panel visual.
-          9. No hace falta reconstruir la arena ni ejecutar /tetris arena refresh.
+          2. Conserva ArlightCore 1.25.4; no necesita otra actualización.
+          3. En mods/ del servidor y de todos los clientes elimina ArlightTetris 0.10.1.
+          4. Instala ArlightTetris-0.10.2-INTERFAZ-ARCADE-SERVER-FIX.jar.
+          5. No dejes dos versiones de ArlightTetris al mismo tiempo.
+          6. Inicia primero el servidor y confirma que completa el arranque.
+          7. Después inicia los clientes y prueba /tetris interfaz.
+          8. No hace falta reconstruir la arena ni ejecutar /tetris arena refresh.
           TXT
           sha256sum delivery/*.jar > delivery/SHA256.txt
 
       - name: Upload delivery
         uses: actions/upload-artifact@v4
         with:
-          name: ArlightTetris-0.10.1-INTERFAZ-ARCADE-Core-1.25.4
+          name: ArlightTetris-0.10.2-SERVER-DIST-FIX-Core-1.25.4
           path: delivery/*
           if-no-files-found: error
           retention-days: 30
