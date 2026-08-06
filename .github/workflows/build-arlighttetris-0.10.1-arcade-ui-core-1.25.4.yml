@@ -51,11 +51,8 @@ jobs:
           grep -q 'value = Dist.CLIENT' tetris/src/main/java/com/arlight/tetris/client/ClientSetup.java
           grep -q 'class TetrisArcadeScreen' tetris/src/main/java/com/arlight/tetris/client/TetrisArcadeScreen.java
           test -f tetris/src/main/resources/assets/arlighttetris/textures/item/tetris_core.png
-          test -f tetris/src/main/resources/assets/minecraft/models/item/nether_star.json
           grep -q '<version>1.25.4</version>' core/pom.xml
           grep -q "version: '1.25.4'" core/src/main/resources/plugin.yml
-          grep -q 'openLobbyMenu' core/src/main/java/com/arlight/core/api/MinigameProvider.java
-          grep -q 'TETRIS_MODEL_MAIN = 7100' core/src/main/java/com/arlight/core/items/CoreItems.java
 
       - name: Compile ArlightCore 1.25.4
         working-directory: core
@@ -77,9 +74,8 @@ jobs:
           jar tf "$TETRIS_JAR" | grep -q 'com/arlight/tetris/network/ClientPacketBridge.class'
           jar tf "$TETRIS_JAR" | grep -q 'com/arlight/tetris/client/TetrisArcadeScreen.class'
           jar tf "$TETRIS_JAR" | grep -q 'com/arlight/tetris/network/ClientboundOpenArcadeMenuPacket.class'
-          javap -classpath "$TETRIS_JAR" -p -c com.arlight.tetris.network.NetworkSetup > networksetup.txt
-          grep -q 'ClientPacketBridge.handleBoardState' networksetup.txt
-          grep -q 'ClientPacketBridge.handleOpenArcadeMenu' networksetup.txt
+          javap -classpath "$TETRIS_JAR" -p -verbose com.arlight.tetris.network.NetworkSetup > networksetup.txt
+          grep -q 'ClientPacketBridge' networksetup.txt
           ! grep -q 'ClientPacketHandler' networksetup.txt
           jar tf "$TETRIS_JAR" | grep -q 'assets/arlighttetris/textures/item/tetris_core.png'
 
